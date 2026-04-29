@@ -1,7 +1,8 @@
 <?php
 
-function renderNavBar($path = __DIR__ . '/../pages', $rootPath = NULL, $idPath = '')
+function renderNavBar($path = NULL, $rootPath = NULL, $idPath = '')
 {
+	$path = $path ?? getConf('PAGES_DIR') ?? (__DIR__ . '/../pages');
 	$rootPath = $rootPath ?? $path;
 	$directories = [];
 	$files = [];

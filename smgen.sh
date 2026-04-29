@@ -27,6 +27,25 @@ DEV_PORT=${DEV_PORT:-"8000"}
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "$( readlink -f "${BASH_SOURCE[0]}" )" )" &> /dev/null && pwd )
 
+resolve_template_path()
+{
+	local candidate="$1"
+	local template_root
+	local resolved
+
+	template_root="$(readlink -f "${TEMPLATE_DIR}")"
+	resolved="$(readlink -f "${candidate}")" || return 1
+
+	case "${resolved}" in
+		"${template_root}"|"${template_root}/"*)
+			printf '%s\n' "${resolved}"
+			;;
+		*)
+			return 1
+			;;
+	esac
+}
+
 case "${1:-""}" in
 	init|i)
 		if [ -n "$(ls -A ./)" ]; then
@@ -163,6 +182,13 @@ case "${1:-""}" in
 			TEMPLATE=
 			if [ "${HAS_FM}" == "1" ]; then
 				TEMPLATE=$( "${YQ}" --front-matter=extract '.template' "${PAGE_FILE}" )
+			fi
+
+			if [ "${TEMPLATE}" != "null" ] && [ "${TEMPLATE}" != "" ]; then
+				if ! TEMPLATE="$(resolve_template_path "${TEMPLATE}")"; then
+					echo "Template must be inside ${TEMPLATE_DIR}: ${TEMPLATE}" >&2
+					exit 1
+				fi
 			fi
 
 			# Template fallback logic

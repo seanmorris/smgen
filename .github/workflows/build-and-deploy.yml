@@ -38,6 +38,9 @@ jobs:
         env:
           YQ_VERSION: v4.47.2
 
+      - name: Run test suite
+        run: bash ./tests/run.sh
+
       - name: Clear files
         run: rm -rf ./docs/*
 

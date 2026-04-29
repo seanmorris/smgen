@@ -1,7 +1,25 @@
 <?php
 
-$headerTemplate = $frontmatter['header'] ?? getConf('HEADER') ?? 'templates/header.php';
-$footerTemplate = $frontmatter['footer'] ?? getConf('FOOTER') ?? 'templates/footer.php';
+function resolveTemplateInclude($path)
+{
+	$templateRoot = realpath(getConf('TEMPLATE_DIR') ?: 'templates');
+	$resolvedPath = realpath($path);
+
+	if(!$templateRoot || !$resolvedPath)
+	{
+		throw new \RuntimeException('Template include path does not exist: ' . $path);
+	}
+
+	if($resolvedPath !== $templateRoot && strpos($resolvedPath, $templateRoot . DIRECTORY_SEPARATOR) !== 0)
+	{
+		throw new \RuntimeException('Template include path must stay inside TEMPLATE_DIR: ' . $path);
+	}
+
+	return $resolvedPath;
+}
+
+$headerTemplate = resolveTemplateInclude($frontmatter['header'] ?? getConf('HEADER') ?? 'templates/header.php');
+$footerTemplate = resolveTemplateInclude($frontmatter['footer'] ?? getConf('FOOTER') ?? 'templates/footer.php');
 
 $leftBarLink = $frontmatter['leftBarLink'] ?? TRUE;
 $leftBarShow = $frontmatter['leftBarShow'] ?? TRUE;

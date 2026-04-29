@@ -56,7 +56,7 @@ document.addEventListener('click', event => {
 
 			if(url.origin !== window.location.origin)
 			{
-				window.open(href);
+				window.open(href, '_blank', 'noopener,noreferrer');
 				event.preventDefault();
 				return;
 			}
