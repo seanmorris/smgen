@@ -10,7 +10,7 @@ function resolveLines(...args)
 			lines.push(arg);
 		}
 
-			if(typeof arg === 'string' && arg.match(/^\d+$/))
+		if(typeof arg === 'string' && arg.match(/^\d+$/))
 		{
 			lines.push(arg);
 		}
@@ -136,7 +136,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 		const lines = [...codeBlock.querySelectorAll('pre > code > span')];
 
 		const start = codeBlock.getAttribute('data-startfrom');
-
 		if(start)
 		{
 			codeBlock.style.setProperty('--startFrom', start);
@@ -166,8 +165,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 			if(attribute.substring(0, prefix.length) === prefix)
 			{
 				const suffix = attribute.substring(prefix.length);
+				const lineSelectors = codeBlock.getAttribute(attribute).split(',');
 
-				const numbers = resolveLines(...codeBlock.getAttribute(attribute).split(',').map(n => n.trim()));
+				if(!lineSelectors.length) continue;
+
+				const numbers = resolveLines(...lineSelectors.map(n => n.trim()));
 
 				for(const number of numbers)
 				{

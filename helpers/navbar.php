@@ -1,6 +1,6 @@
 <?php
 
-function makeNavBar($path, $rootPath = NULL, $idPath = '')
+function renderNavBar($path = __DIR__ . '/../pages', $rootPath = NULL, $idPath = '')
 {
 	$rootPath = $rootPath ?? $path;
 	$directories = [];
@@ -98,7 +98,7 @@ function makeNavBar($path, $rootPath = NULL, $idPath = '')
 
 			?><details <?=$open;?> data-id-path = "<?=$idSubPath;?>">
 				<summary><?=$title;?></summary>
-				<?=makeNavBar($pathname, $rootPath, $idSubPath);?>
+				<?=renderNavBar($pathname, $rootPath, $idSubPath);?>
 			</details><?php
 		}
 		else if($type === 'FILE')
@@ -120,5 +120,3 @@ function makeNavBar($path, $rootPath = NULL, $idPath = '')
 
 	?></ul><?php
 }
-
-makeNavBar(getenv('PAGES_DIR'));

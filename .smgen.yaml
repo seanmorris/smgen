@@ -1,0 +1,29 @@
+PRODUCT_NAME: SMGen
+TAGLINE: Static Markup Generator
+ORGANIZATION: Sean Morris
+TITLE_PREFIX: SMGen
+
+HEADER: templates/smgen-header.php
+
+HIGHLIGHT_STYLE: zenburn
+
+BASE_URL: http://localhost:8000
+DEV_PORT: 8000
+
+DEFAULT_THEME: theme-cosmic
+STATIC_DIR: ./static
+
+STYLES:
+  - /default.css
+  - /techno.css
+  - /cosmic.css
+
+JAVASCRIPTS:
+  - /main.js
+
+ICONS:
+  - class: github-icon
+    title: github
+    href:  https://github.com/seanmorris/smgen
+    text: null
+    stc: null

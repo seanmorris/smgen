@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+if [ -f .smgen.yml ]; then
+	source <(yq e . -os .smgen.yaml)
+fi
+
 if [ -f .smgen-rc ]; then
 	# shellcheck source=/dev/null
 	. .smgen-rc
@@ -18,7 +22,6 @@ STATIC_DIR=${STATIC_DIR:-"./static"}
 PAGES_DIR=${PAGES_DIR:-"./pages"}
 
 DEV_PORT=${DEV_PORT:-"8000"}
-
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "$( readlink -f "${BASH_SOURCE[0]}" )" )" &> /dev/null && pwd )
 
@@ -55,7 +58,6 @@ case "${1:-""}" in
 		UUID=${UUID:-"uuid"}
 		SMG_SEARCH=${SMG_SEARCH:-"smgen-search"}
 
-
 		BASE_URL=${BASE_URL:-""}
 		PRODUCT_NAME=${PRODUCT_NAME:-""}
 		ORGANIZATION=${ORGANIZATION:-""}
@@ -64,7 +66,7 @@ case "${1:-""}" in
 		HEADER=${HEADER:-"templates/header.php"}
 		FOOTER=${FOOTER:-"templates/footer.php"}
 
-		PHP_FLAGS='-d display_errors=stderr -d include_path="'${SCRIPT_DIR}/helpers'"'
+		PHP_FLAGS='-d display_errors=stderr -d auto_prepend_file="'${SCRIPT_DIR}/helpers/bootstrap.php'" -d include_path="'${SCRIPT_DIR}/helpers'"'
 
 		STYLES=${STYLES:-""}
 		INLINE_STYLES=${INLINE_STYLES:-""}
@@ -156,10 +158,9 @@ case "${1:-""}" in
 			mkdir -p "${OUTPUT_DIR}/${DIR#"${PAGES_DIR}"}"
 
 			# Determine the template
+			TEMPLATE=
 			if [ "${HAS_FM}" == "1" ]; then
 				TEMPLATE=$( "${YQ}" --front-matter=extract '.template' "${PAGE_FILE}" )
-			else
-				TEMPLATE=${TEMPLATE_DIR}/page.php
 			fi
 
 			# Template fallback logic
@@ -273,7 +274,6 @@ case "${1:-""}" in
 				cp -prfv "${FILEPATH}" "${OUTPUT_DIR}"
 			fi
 		done;
-
 
 		wait ${SERVER_PID}
 		;;

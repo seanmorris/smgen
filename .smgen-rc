@@ -13,7 +13,6 @@ STYLES=$( cat <<-END
 END
 )
 
-
 JAVASCRIPTS=$( cat <<-END
 	${BASE_URL}/main.js
 END
