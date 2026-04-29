@@ -2,6 +2,8 @@
 
 set -euo pipefail
 
+DEFAULT_THEME=theme-cosmic
+
 if [ -f .smgen.yaml ]; then
 	source <(yq e . -os .smgen.yaml)
 fi
@@ -32,7 +34,7 @@ case "${1:-""}" in
 			exit 1
 		fi;
 
-		mkdir docs/
+		mkdir ${OUTPUT_DIR}
 		mkdir pages/
 		mkdir static/
 		mkdir templates/
@@ -227,7 +229,7 @@ case "${1:-""}" in
 
 			echo -e "\e[33;4mAssembing sitemap...\e[0m"
 			echo -e "\e[37m  ${OUTPUT_DIR}/sitemap.xml...\e[0m"
-			"${PHP}" ${PHP_FLAGS} "${SCRIPT_DIR}/helpers/sitemap.php" "${BASE_URL}" > "${OUTPUT_DIR}/sitemap.xml"
+			"${PHP}" ${PHP_FLAGS} "${SCRIPT_DIR}/helpers/sitemap.php" "${BASE_URL}" "${OUTPUT_DIR}" > "${OUTPUT_DIR}/sitemap.xml"
 
 			if command -v "${SMG_SEARCH}" >/dev/null 2>&1; then
 				echo -e "\e[33;4mAssembing search index...\e[0m"
@@ -250,12 +252,11 @@ case "${1:-""}" in
 		echo "ctrl+c to exit..."
 		sleep 1
 
-		# EVENTS="create,modify,delete,move"
-		EVENTS="create,modify"
+		EVENTS="create,modify,delete,move"
 
 		trap 'kill $(jobs -p)' EXIT
 
-		php -S "localhost:${DEV_PORT}" -t docs/ &
+		php -S "localhost:${DEV_PORT}" -t ${OUTPUT_DIR} &
 		SERVER_PID=$!
 
 		"${BASH_SOURCE[0]}" build
@@ -263,7 +264,7 @@ case "${1:-""}" in
 		inotifywait -m -r -e "$EVENTS" --format '%w%f %e' "${PAGES_DIR}" "${STATIC_DIR}" \
 		| while read -r FILEPATH EVENT; do
 			if [[ "${FILEPATH}" == "${PAGES_DIR}"* ]]; then
-				if [[ ${EVENT} == "CREATE" ]]; then
+				if [[ ${EVENT} == *"CREATE"* || ${EVENT} == *"MOVED_TO"* || ${EVENT} == *"ISDIR"* ]]; then
 					"${BASH_SOURCE[0]}" build
 				else
 					"${BASH_SOURCE[0]}" build "${FILEPATH}"
@@ -271,7 +272,17 @@ case "${1:-""}" in
 			fi
 
 			if [[ "${FILEPATH}" == "${STATIC_DIR}"* ]]; then
-				cp -prfv "${FILEPATH}" "${OUTPUT_DIR}"
+				RELATIVE_PATH="${FILEPATH#"${STATIC_DIR}/"}"
+				DEST_PATH="${OUTPUT_DIR}/${RELATIVE_PATH}"
+				DEST_DIR="$(dirname "${DEST_PATH}")"
+
+				if [[ ${EVENT} == *"DELETE"* || ${EVENT} == *"MOVED_FROM"* ]]; then
+					rm -rfv "${DEST_PATH}"
+					continue
+				fi
+
+				mkdir -p "${DEST_DIR}"
+				cp -prfv "${FILEPATH}" "${DEST_PATH}"
 			fi
 		done;
 
@@ -280,7 +291,7 @@ case "${1:-""}" in
 	serve|s)
 		echo "ctrl+c to exit..."
 		sleep 1
-		php -S "localhost:${DEV_PORT}" -t docs/
+		php -S "localhost:${DEV_PORT}" -t ${OUTPUT_DIR}
 		;;
 
 	proofread|pr)

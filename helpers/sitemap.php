@@ -1,7 +1,7 @@
 <?php
 
 $domain = $argv[1];
-$rootPath = './docs';
+$rootPath = $argv[2];
 
 $directory = new \RecursiveIteratorIterator(
 	new \RecursiveDirectoryIterator($rootPath)

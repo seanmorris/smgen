@@ -27,7 +27,7 @@ smgen init
 This command will create the following folders in the current directory:
 
 ```bash
-docs/
+docs/ # override with OUTPUT_DIR env var
 pages/
 static/
 templates/

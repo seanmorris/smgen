@@ -37,6 +37,7 @@ $if(canonical)$
 	<link rel="canonical" href="$canonical$" />
 $endif$
 	<meta name="title" content="$if(pagetitle)$${pagetitle}$else$${title}$endif$">
+	<meta name="generated-at" content="<?=date('Y-m-d_h:i:s')?>">
 	<link rel="icon" type="image/png" href="<?=getConf('BASE_URL');?>/icon-16.png">
 	<link rel="sitemap" href="<?=getConf('BASE_URL');?>/sitemap.xml" />
 <?php if(file_exists('static/logo.svg')): ?>

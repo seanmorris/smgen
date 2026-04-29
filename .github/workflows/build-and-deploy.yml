@@ -29,7 +29,7 @@ jobs:
         run: npm i -g smgen-search
 
       - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y pandoc php-cli uuid
+        run: sudo apt-get update && sudo apt-get install -y pandoc php-cli php-yaml uuid
 
       - name: Install yq (Go binary)
         run: |
