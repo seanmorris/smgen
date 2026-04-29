@@ -47,9 +47,9 @@ function getConf($name)
 		$config = $config ?? [];
 	}
 
-	if(!$envConfig && array_key_exists('environment', $_ENV) && file_exists('./.smgen.' . $_ENV['environment'] . 'yaml'))
+	if(!$envConfig && array_key_exists('environment', $_ENV) && file_exists('./.smgen.' . $_ENV['environment'] . '.yaml'))
 	{
-		$envConfig = yaml_parse_file('./.smgen.' . $_ENV['environment'] . 'yaml');
+		$envConfig = yaml_parse_file('./.smgen.' . $_ENV['environment'] . '.yaml');
 	}
 	else
 	{

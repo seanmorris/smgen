@@ -56,10 +56,10 @@ $endfor$
 $if(math)$
 	$math$
 $endif$
-<?php if(getConf('JAVASCRIPTS')) foreach(getConf('JAVASCRIPTS') as $javascript):?>
+<?php if(getConf('SCRIPTS')) foreach(getConf('SCRIPTS') as $javascript):?>
 	<script src = "<?=$javascript;?>"></script>
 <?php endforeach; ?>
-<?php if(getConf('INLINE_JAVASCRIPTS')) foreach(getConf('INLINE_JAVASCRIPTS') as $javascriptFile):?>
+<?php if(getConf('INLINE_SCRIPTS')) foreach(getConf('INLINE_SCRIPTS') as $javascriptFile):?>
 	<script><?=file_get_contents($javascriptFile);?></script>
 <?php endforeach; ?>
 </head>
@@ -88,10 +88,10 @@ $endif$
 		</div>
 	</section>
 	<?php include $footerTemplate; ?>
-<?php if(getConf('BODY_JAVASCRIPTS')) foreach(getConf('BODY_JAVASCRIPTS') as $javascript):?>
+<?php if(getConf('BODY_SCRIPTS')) foreach(getConf('BODY_SCRIPTS') as $javascript):?>
 	<script src = "<?=$javascript;?>"></script>
 <?php endforeach; ?>
-<?php if(getConf('INLINE_BODY_JAVASCRIPTS')) foreach(getConf('INLINE_BODY_JAVASCRIPTS') as $javascriptFile):?>
+<?php if(getConf('INLINE_BODY_SCRIPTS')) foreach(getConf('INLINE_BODY_SCRIPTS') as $javascriptFile):?>
 	<script><?=file_get_contents($javascriptFile);?></script>
 <?php endforeach; ?>
 	</body>

@@ -9,7 +9,7 @@ STYLES=$( cat <<-END
 END
 )
 
-JAVASCRIPTS=$( cat <<-END
+SCRIPTS=$( cat <<-END
 	${BASE_URL}/main.js
 END
 )

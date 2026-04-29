@@ -12,7 +12,7 @@ fff
 fg
 href
 html
-JAVASCRIPTS
+SCRIPTS
 js
 JS
 kate

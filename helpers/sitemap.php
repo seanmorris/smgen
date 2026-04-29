@@ -31,10 +31,12 @@ foreach($directory as $entry)
 	{
 		continue;
 	}
+
+	$escapedPathname = escapeshellarg($pathname);
 ?>
 	<url>
 		<loc><?=$domain?>/<?=$urlPath?></loc>
-		<lastmod><?=trim(`date -r $pathname +"%Y-%m-%d"`);?></lastmod>
+		<lastmod><?=trim(`date -r $escapedPathname +"%Y-%m-%d"`);?></lastmod>
 		<changefreq>daily</changefreq>
 		<priority>0.8</priority>
 	</url>

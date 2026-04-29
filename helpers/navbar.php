@@ -26,7 +26,8 @@ function renderNavBar($path = __DIR__ . '/../pages', $rootPath = NULL, $idPath =
 
 			if(file_exists($pathname . '/.fm.yaml'))
 			{
-				$frontmatter = yaml_parse(`yq --front-matter=extract $pathname/.fm.yaml 2>/dev/null|| echo ""`) ?? [];
+				$fmPath = escapeshellarg($pathname . '/.fm.yaml');
+				$frontmatter = yaml_parse(`yq --front-matter=extract $fmPath 2>/dev/null|| echo ""`) ?? [];
 			}
 
 			if(!($frontmatter['leftBarLink'] ?? true))
@@ -51,7 +52,8 @@ function renderNavBar($path = __DIR__ . '/../pages', $rootPath = NULL, $idPath =
 
 		if($first === "---\n")
 		{
-			$frontmatter = yaml_parse(`yq --front-matter=extract $pathname 2>/dev/null || echo ""`) ?? [];
+			$fmPath = escapeshellarg($pathname);
+			$frontmatter = yaml_parse(`yq --front-matter=extract $fmPath 2>/dev/null || echo ""`) ?? [];
 
 			if(!($frontmatter['leftBarLink'] ?? true))
 			{

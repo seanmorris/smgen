@@ -34,7 +34,7 @@ STYLES=$(cat <<-END
 END
 )
 
-JAVASCRIPTS=$(cat <<-END
+SCRIPTS=$(cat <<-END
     /example.js
 END
 )
@@ -42,7 +42,7 @@ END
 
 These will insert `<link rel="stylesheet" href="/example.css">` in the header and `<script src="/example.js"></script>` before `</body>`.
 
-To inline files directly in the HTML (rather than referencing them), use the `INLINE_STYLES` and `INLINE_JAVASCRIPTS` variables:
+To inline files directly in the HTML (rather than referencing them), use the `INLINE_STYLES` and `INLINE_SCRIPTS` variables:
 
 ```bash
 INLINE_STYLES=$(cat <<-END
@@ -50,7 +50,7 @@ INLINE_STYLES=$(cat <<-END
 END
 )
 
-INLINE_JAVASCRIPTS=$(cat <<-END
+INLINE_SCRIPTS=$(cat <<-END
     /inline.js
 END
 )
@@ -110,7 +110,7 @@ END
 )
 ```
 
-Inject that snippet via `INLINE_JAVASCRIPTS` or place it directly in your `templates/header.php`.
+Inject that snippet via `INLINE_SCRIPTS` or place it directly in your `templates/header.php`.
 
 ### Syntax Highlighting
 

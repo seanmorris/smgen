@@ -39,7 +39,7 @@ Ensure there are no characters before or after the `---` on those lines, and tha
 
 ### Q: Custom CSS/JS not loading?
 
-Verify your `STYLES` or `JAVASCRIPTS` variables and correct paths in `.smgen-rc`.
+Verify your `STYLES` or `SCRIPTS` variables and correct paths in `.smgen-rc`.
 
 ### Q: smgen watch fails or is unavailable?
 

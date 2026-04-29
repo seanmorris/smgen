@@ -27,10 +27,10 @@ You can configure the generator via environment variables, `.smgen-rc`, and pre/
 
 ### Page Behavior
 
-- `JAVASCRIPTS` — newline-separated list of JS files to include (via `<script src>`)
-- `INLINE_JAVASCRIPTS` — newline-separated list of JS files to inline in `<script>` tags in `<head>`
-- `BODY_JAVASCRIPTS` — newline-separated list of JS files to include before `</body>`
-- `INLINE_BODY_JAVASCRIPTS` — newline-separated list of JS files to inline before `</body>`
+- `SCRIPTS` — newline-separated list of JS files to include (via `<script src>`)
+- `INLINE_SCRIPTS` — newline-separated list of JS files to inline in `<script>` tags in `<head>`
+- `BODY_SCRIPTS` — newline-separated list of JS files to include before `</body>`
+- `INLINE_BODY_SCRIPTS` — newline-separated list of JS files to inline before `</body>`
 
 ### Project Directories
 
