@@ -115,7 +115,8 @@ test_nested_static_assets_preserve_paths_on_build()
 	)
 
 	assert_file_exists "${site}/docs/images/logo.svg"
-	assert_file_contains "${site}/docs/index.html" 'href = "http://localhost:8000/index.html"'
+	assert_file_contains "${site}/docs/index.html" 'class="active-link"'
+	assert_file_contains "${site}/docs/index.html" '>Home'
 	assert_file_missing "${site}/docs/writing-pages.html"
 }
 
