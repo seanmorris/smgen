@@ -65,3 +65,8 @@
 	--warning: #C29600;
 	--danger:  #E1324A;
 }
+
+:root.theme-cosmic.ligh .sourceCode {
+	filter: invert(1) contrast(1.25);
+	background-color: #111;
+}
