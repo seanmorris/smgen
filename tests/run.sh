@@ -110,6 +110,7 @@ test_custom_output_dir_builds_and_links_sitemap()
 {
 	begin_test "custom-output-dir"
 	local site
+	local expected_base_url
 	site="$(make_temp_site)"
 	CURRENT_SITE="${site}"
 
@@ -137,10 +138,12 @@ EOF
 		"${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}.log" 2>&1
 	)
 
+	expected_base_url="${BASE_URL:-http://localhost:8000}"
+
 	assert_file_exists "${site}/public/index.html"
 	assert_file_exists "${site}/public/sitemap.xml"
 	assert_file_missing "${site}/public/sitemap.xml "
-	assert_file_contains "${site}/public/index.html" 'http://localhost:8000/sitemap.xml'
+	assert_file_contains "${site}/public/index.html" "${expected_base_url}/sitemap.xml"
 }
 
 test_env_base_url_overrides_localhost_defaults()
