@@ -36,7 +36,10 @@ jobs:
           YQ_VERSION: v4.47.2
 
       - name: Run test suite
-        run: bash ./tests/run.sh
+        run: |
+          mkdir -p .ci-debug
+          set -o pipefail
+          bash ./tests/run.sh 2>&1 | tee .ci-debug/test-suite.log
 
       - name: Clear files
         run: rm -rf ./docs/*
@@ -52,6 +55,7 @@ jobs:
           if-no-files-found: ignore
           path: |
             docs/**
+            .ci-debug/**
             .smgen.yaml
             .smgen-rc
             .github/workflows/build-and-deploy.yml

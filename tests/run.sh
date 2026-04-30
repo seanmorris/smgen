@@ -4,9 +4,41 @@ set -euo pipefail
 
 ROOT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )/.." &> /dev/null && pwd )"
 SMGEN="${ROOT_DIR}/smgen.sh"
+DEBUG_DIR="${SMGEN_TEST_DEBUG_DIR:-${ROOT_DIR}/.ci-debug}"
+CURRENT_TEST=""
+CURRENT_SITE=""
+
+rm -rf "${DEBUG_DIR}"
+mkdir -p "${DEBUG_DIR}"
+
+collect_debug()
+{
+	local target_dir
+
+	if [[ -z "${CURRENT_TEST}" ]]; then
+		return
+	fi
+
+	target_dir="${DEBUG_DIR}/${CURRENT_TEST}"
+	mkdir -p "${target_dir}"
+
+	{
+		echo "test=${CURRENT_TEST}"
+		echo "site=${CURRENT_SITE}"
+		echo "pwd=$(pwd)"
+		echo "BASE_URL=${BASE_URL:-}"
+		echo "GITHUB_ENV=${GITHUB_ENV:-}"
+		env | sort
+	} > "${target_dir}/env.txt"
+
+	if [[ -n "${CURRENT_SITE}" && -d "${CURRENT_SITE}" ]]; then
+		cp -pr "${CURRENT_SITE}/." "${target_dir}/site/"
+	fi
+}
 
 fail()
 {
+	collect_debug
 	echo "FAIL: $*" >&2
 	exit 1
 }
@@ -37,6 +69,12 @@ assert_file_contains()
 	grep -Fq -- "${pattern}" "${file}" || fail "expected ${file} to contain: ${pattern}"
 }
 
+begin_test()
+{
+	CURRENT_TEST="$1"
+	CURRENT_SITE=""
+}
+
 make_temp_site()
 {
 	local temp_dir
@@ -51,12 +89,14 @@ make_temp_site()
 
 test_default_build_generates_expected_output()
 {
+	begin_test "default-build"
 	local site
 	site="$(make_temp_site)"
+	CURRENT_SITE="${site}"
 
 	(
 		cd "${site}"
-		"${SMGEN}" build >/dev/null
+		"${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}.log" 2>&1
 	)
 
 	assert_file_exists "${site}/docs/index.html"
@@ -68,8 +108,10 @@ test_default_build_generates_expected_output()
 
 test_custom_output_dir_builds_and_links_sitemap()
 {
+	begin_test "custom-output-dir"
 	local site
 	site="$(make_temp_site)"
+	CURRENT_SITE="${site}"
 
 	cat > "${site}/.smgen-rc" <<'EOF'
 #!/usr/bin/env bash
@@ -92,7 +134,7 @@ EOF
 
 	(
 		cd "${site}"
-		"${SMGEN}" build >/dev/null
+		"${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}.log" 2>&1
 	)
 
 	assert_file_exists "${site}/public/index.html"
@@ -103,12 +145,14 @@ EOF
 
 test_env_base_url_overrides_localhost_defaults()
 {
+	begin_test "env-base-url"
 	local site
 	site="$(make_temp_site)"
+	CURRENT_SITE="${site}"
 
 	(
 		cd "${site}"
-		BASE_URL="https://seanmorris.github.io/smgen" "${SMGEN}" build >/dev/null
+		BASE_URL="https://seanmorris.github.io/smgen" "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}.log" 2>&1
 	)
 
 	assert_file_contains "${site}/docs/index.html" 'content="https://seanmorris.github.io/smgen"'
@@ -119,15 +163,17 @@ test_env_base_url_overrides_localhost_defaults()
 
 test_nested_static_assets_preserve_paths_on_build()
 {
+	begin_test "nested-static-assets"
 	local site
 	site="$(make_temp_site)"
+	CURRENT_SITE="${site}"
 
 	mkdir -p "${site}/static/images"
 	printf '%s\n' '<svg xmlns="http://www.w3.org/2000/svg"></svg>' > "${site}/static/images/logo.svg"
 
 	(
 		cd "${site}"
-		"${SMGEN}" build >/dev/null
+		"${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}.log" 2>&1
 	)
 
 	assert_file_exists "${site}/docs/images/logo.svg"
@@ -138,8 +184,10 @@ test_nested_static_assets_preserve_paths_on_build()
 
 test_page_template_cannot_escape_template_dir()
 {
+	begin_test "template-escape"
 	local site
 	site="$(make_temp_site)"
+	CURRENT_SITE="${site}"
 
 	cat > "${site}/evil.php" <<'EOF'
 <?php file_put_contents('/tmp/smgen-template-escape.txt', 'executed'); ?>
@@ -158,7 +206,7 @@ EOF
 
 	(
 		cd "${site}"
-		assert_command_fails "${SMGEN}" build >/dev/null 2>&1
+		assert_command_fails "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}.log" 2>&1
 	)
 
 	assert_file_missing /tmp/smgen-template-escape.txt
@@ -166,6 +214,7 @@ EOF
 
 test_external_links_use_noopener()
 {
+	begin_test "external-links-noopener"
 	assert_file_contains "${ROOT_DIR}/static/main.js" "window.open(href, '_blank', 'noopener,noreferrer');"
 }
 
