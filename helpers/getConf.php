@@ -33,6 +33,42 @@ const DEFAULTS = [
 	'HIGHLIGHT_STYLE' => '',
 ];
 
+const LIST_CONFIG_KEYS = [
+	'STYLES',
+	'INLINE_STYLES',
+	'SCRIPTS',
+	'BODY_SCRIPTS',
+	'INLINE_SCRIPTS',
+	'INLINE_BODY_SCRIPTS',
+];
+
+function normalizeConfigValue($name, $val)
+{
+	if(in_array($name, LIST_CONFIG_KEYS, true))
+	{
+		if(is_array($val))
+		{
+			return $val;
+		}
+
+		$val = rtrim((string) $val);
+
+		if($val === '')
+		{
+			return [];
+		}
+
+		return explode("\n", $val);
+	}
+
+	if(is_string($val))
+	{
+		return rtrim($val);
+	}
+
+	return $val;
+}
+
 function getConf($name)
 {
 	static $config;
@@ -58,37 +94,23 @@ function getConf($name)
 
 	if(array_key_exists($name, $envConfig))
 	{
-		return $envConfig[$name];
+		return normalizeConfigValue($name, $envConfig[$name]);
 	}
 
 	if(array_key_exists($name, $config))
 	{
-		return $config[$name];
+		return normalizeConfigValue($name, $config[$name]);
 	}
 
 	if(array_key_exists($name, $_ENV))
 	{
-		$val = rtrim($_ENV[$name]);
-
-		if(strpos($val, "\n") > -1)
-		{
-			return explode("\n", $val);
-		}
-
-		return $val;
+		return normalizeConfigValue($name, $_ENV[$name]);
 	}
 
 	$envVal = getenv($name);
 	if($envVal !== false)
 	{
-		$val = rtrim($envVal);
-
-		if(strpos($val, "\n") > -1)
-		{
-			return explode("\n", $val);
-		}
-
-		return $val;
+		return normalizeConfigValue($name, $envVal);
 	}
 
 	if(array_key_exists($name, DEFAULTS))

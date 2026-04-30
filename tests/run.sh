@@ -98,7 +98,7 @@ EOF
 	assert_file_exists "${site}/public/index.html"
 	assert_file_exists "${site}/public/sitemap.xml"
 	assert_file_missing "${site}/public/sitemap.xml "
-	assert_file_contains "${site}/public/index.html" 'href="/sitemap.xml"'
+	assert_file_contains "${site}/public/index.html" 'href="http://localhost:8000/sitemap.xml"'
 }
 
 test_env_base_url_overrides_localhost_defaults()
