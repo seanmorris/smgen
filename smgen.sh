@@ -304,7 +304,7 @@ case "${1:-""}" in
 			# shellcheck source=/dev/null
 			. .env.local
 		fi
-		echo "ctrl+c to exit..!"
+		echo "ctrl+c to exit..."
 		sleep 1
 
 		EVENTS="create,modify,delete,move"
