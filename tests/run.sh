@@ -215,6 +215,56 @@ EOF
 	assert_file_missing /tmp/smgen-template-escape.txt
 }
 
+test_project_helpers_override_core_helpers()
+{
+	begin_test "project-helper-overrides"
+	local site
+	site="$(make_temp_site)"
+	CURRENT_SITE="${site}"
+
+	mkdir -p "${site}/helpers"
+
+	cat > "${site}/helpers/navbar.php" <<'EOF'
+<?php
+function renderNavBar($path = NULL, $rootPath = NULL, $idPath = '')
+{
+	echo '<div id="custom-navbar">custom nav</div>';
+}
+EOF
+
+	cat > "${site}/helpers/sitemap.php" <<'EOF'
+<?php
+echo "<custom-sitemap />\n";
+EOF
+
+	cat > "${site}/helpers/domain.lua" <<'EOF'
+function Image (el)
+	return el
+end
+EOF
+
+	cat > "${site}/pages/index.md" <<'EOF'
+---
+title: Home
+---
+
+# Hello
+
+![](logo.png)
+EOF
+
+	printf '%s\n' '<svg xmlns="http://www.w3.org/2000/svg"></svg>' > "${site}/static/logo.png"
+
+	(
+		cd "${site}"
+		BASE_URL="https://example.com" "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}.log" 2>&1
+	)
+
+	assert_file_contains "${site}/docs/index.html" 'id="custom-navbar"'
+	assert_file_contains "${site}/docs/sitemap.xml" '<custom-sitemap />'
+	assert_file_contains "${site}/docs/index.html" 'src="logo.png"'
+}
+
 test_external_links_use_noopener()
 {
 	begin_test "external-links-noopener"
@@ -228,6 +278,7 @@ main()
 	test_env_base_url_overrides_localhost_defaults
 	test_nested_static_assets_preserve_paths_on_build
 	test_page_template_cannot_escape_template_dir
+	test_project_helpers_override_core_helpers
 	test_external_links_use_noopener
 
 	echo "PASS: all tests"

@@ -6,6 +6,7 @@ const DEFAULTS = [
 	'TEMPLATE_DIR' => './templates',
 	'STATIC_DIR' => './static',
 	'PAGES_DIR' => './pages',
+	'HELPERS_DIR' => './helpers',
 	'DEV_PORT' => 8000,
 
 	// Commands

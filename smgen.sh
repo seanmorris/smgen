@@ -22,10 +22,25 @@ OUTPUT_DIR=${OUTPUT_DIR:-"./docs"}
 TEMPLATE_DIR=${TEMPLATE_DIR:-"./templates"}
 STATIC_DIR=${STATIC_DIR:-"./static"}
 PAGES_DIR=${PAGES_DIR:-"./pages"}
+HELPERS_DIR=${HELPERS_DIR:-"./helpers"}
 
 DEV_PORT=${DEV_PORT:-"8000"}
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "$( readlink -f "${BASH_SOURCE[0]}" )" )" &> /dev/null && pwd )
+PROJECT_DIR="$(pwd)"
+
+resolve_project_helper_path()
+{
+	local helper_name="$1"
+	local project_candidate="${HELPERS_DIR}/${helper_name}"
+
+	if [ -f "${project_candidate}" ]; then
+		printf '%s\n' "${project_candidate}"
+		return 0
+	fi
+
+	printf '%s\n' "${SCRIPT_DIR}/helpers/${helper_name}"
+}
 
 resolve_template_path()
 {
@@ -79,6 +94,10 @@ case "${1:-""}" in
 		UUID=${UUID:-"uuid"}
 		SMG_SEARCH=${SMG_SEARCH:-"smgen-search"}
 
+		if ! command -v "${UUID}" >/dev/null 2>&1 && [ "${UUID}" = "uuid" ] && command -v uuidgen >/dev/null 2>&1; then
+			UUID="uuidgen"
+		fi
+
 		BASE_URL=${BASE_URL:-""}
 		PRODUCT_NAME=${PRODUCT_NAME:-""}
 		ORGANIZATION=${ORGANIZATION:-""}
@@ -88,6 +107,8 @@ case "${1:-""}" in
 		FOOTER=${FOOTER:-"templates/footer.php"}
 
 		PHP_FLAGS='-d display_errors=stderr -d auto_prepend_file="'${SCRIPT_DIR}/helpers/bootstrap.php'" -d include_path="'${SCRIPT_DIR}/helpers'"'
+		DOMAIN_FILTER="$(resolve_project_helper_path domain.lua)"
+		SITEMAP_HELPER="$(resolve_project_helper_path sitemap.php)"
 
 		STYLES=${STYLES:-""}
 		INLINE_STYLES=${INLINE_STYLES:-""}
@@ -227,7 +248,11 @@ case "${1:-""}" in
 			HEADER=${HEADER}\
 			FOOTER=${FOOTER}\
 			DEFAULT_THEME=${DEFAULT_THEME}\
+			HELPERS_DIR=${HELPERS_DIR}\
 			PAGES_DIR=${PAGES_DIR}\
+			SMGEN_CORE_DIR=${SCRIPT_DIR}\
+			SMGEN_PROJECT_DIR=${PROJECT_DIR}\
+			SMGEN_PROJECT_HELPERS_DIR=${HELPERS_DIR}\
 			SCRIPTS=${SCRIPTS}\
 			INLINE_SCRIPTS=${INLINE_SCRIPTS}\
 			BODY_SCRIPTS=${BODY_SCRIPTS}\
@@ -239,7 +264,7 @@ case "${1:-""}" in
 			BASE_URL=${BASE_URL}\
 			"${PANDOC}" --data-dir=. -s -f markdown -t html \
 				${HIGHLIGHT_STYLE} ${TOC_FLAG} ${TITLE_PREFIX} \
-				--lua-filter="${SCRIPT_DIR}/helpers/domain.lua" \
+				--lua-filter="${DOMAIN_FILTER}" \
 				--template="${TMP_FILE}" \
 				${INLINE_STYLE_ARGS} \
 				${STYLE_ARGS} \
@@ -255,7 +280,7 @@ case "${1:-""}" in
 
 			echo -e "\e[33;4mAssembing sitemap...\e[0m"
 			echo -e "\e[37m  ${OUTPUT_DIR}/sitemap.xml...\e[0m"
-			"${PHP}" ${PHP_FLAGS} "${SCRIPT_DIR}/helpers/sitemap.php" "${BASE_URL}" "${OUTPUT_DIR}" > "${OUTPUT_DIR}/sitemap.xml"
+			"${PHP}" ${PHP_FLAGS} "${SITEMAP_HELPER}" "${BASE_URL}" "${OUTPUT_DIR}" > "${OUTPUT_DIR}/sitemap.xml"
 
 			if command -v "${SMG_SEARCH}" >/dev/null 2>&1; then
 				echo -e "\e[33;4mAssembing search index...\e[0m"
@@ -275,7 +300,11 @@ case "${1:-""}" in
 		;;
 
 	watch|w)
-		echo "ctrl+c to exit..."
+		if [ -f .env.local ]; then
+			# shellcheck source=/dev/null
+			. .env.local
+		fi
+		echo "ctrl+c to exit..!"
 		sleep 1
 
 		EVENTS="create,modify,delete,move"
