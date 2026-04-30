@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
 	for(const summary of summaries)
 	{
 		const idPath = summary.getAttribute('data-id-path');
-		const isOpen = JSON.parse(localStorage.getItem('openMenu-' + idPath));
+		const isOpen = JSON.parse(localStorage.getItem('openMenu-' + idPath) ?? summary.hasAttribute('open'));
 
 		if(isOpen)
 		{
