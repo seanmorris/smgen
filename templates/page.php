@@ -1,23 +1,5 @@
 <?php
 
-function resolveTemplateInclude($path)
-{
-	$templateRoot = realpath(getConf('TEMPLATE_DIR') ?: 'templates');
-	$resolvedPath = realpath($path);
-
-	if(!$templateRoot || !$resolvedPath)
-	{
-		throw new \RuntimeException('Template include path does not exist: ' . $path);
-	}
-
-	if($resolvedPath !== $templateRoot && strpos($resolvedPath, $templateRoot . DIRECTORY_SEPARATOR) !== 0)
-	{
-		throw new \RuntimeException('Template include path must stay inside TEMPLATE_DIR: ' . $path);
-	}
-
-	return $resolvedPath;
-}
-
 $headerTemplate = resolveTemplateInclude($frontmatter['header'] ?? getConf('HEADER') ?? 'templates/header.php');
 $footerTemplate = resolveTemplateInclude($frontmatter['footer'] ?? getConf('FOOTER') ?? 'templates/footer.php');
 
@@ -56,10 +38,10 @@ $if(canonical)$
 $endif$
 	<meta name="title" content="$if(pagetitle)$${pagetitle}$else$${title}$endif$">
 	<meta name="generated-at" content="<?=date('Y-m-d_h:i:s')?>">
-	<link rel="icon" type="image/png" href="<?=getConf('BASE_URL');?>/icon-16.png">
-	<link rel="sitemap" href="<?=getConf('BASE_URL');?>/sitemap.xml" />
+	<link rel="icon" type="image/png" href="<?=resolveAssetUrl('/icon-16.png')?>">
+	<link rel="sitemap" href="<?=resolveAssetUrl('/sitemap.xml')?>" />
 <?php if(file_exists('static/logo.svg')): ?>
-	<link rel="preload" href="<?=getConf('BASE_URL');?>/logo.svg" as="image" type="image/svg">
+	<link rel="preload" href="<?=resolveAssetUrl('/logo.svg')?>" as="image" type="image/svg">
 <?php endif; ?>
 	<style>
 		$styles.html()$
@@ -76,7 +58,7 @@ $if(math)$
 	$math$
 $endif$
 <?php if(getConf('SCRIPTS')) foreach(getConf('SCRIPTS') as $javascript):?>
-	<script src = "<?=getConf('BASE_URL');?>/<?=$javascript;?>"></script>
+	<script src = "<?=resolveAssetUrl($javascript)?>"></script>
 <?php endforeach; ?>
 <?php if(getConf('INLINE_SCRIPTS')) foreach(getConf('INLINE_SCRIPTS') as $javascriptFile):?>
 	<script><?=file_get_contents($javascriptFile);?></script>
@@ -108,7 +90,7 @@ $endif$
 	</section>
 	<?php include $footerTemplate; ?>
 <?php if(getConf('BODY_SCRIPTS')) foreach(getConf('BODY_SCRIPTS') as $javascript):?>
-	<script src = "<?=getConf('BASE_URL');?>/<?=$javascript;?>"></script>
+	<script src = "<?=resolveAssetUrl($javascript)?>"></script>
 <?php endforeach; ?>
 <?php if(getConf('INLINE_BODY_SCRIPTS')) foreach(getConf('INLINE_BODY_SCRIPTS') as $javascriptFile):?>
 	<script><?=file_get_contents($javascriptFile);?></script>

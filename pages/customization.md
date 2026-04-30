@@ -67,6 +67,38 @@ END
 )
 ```
 
+### Inheriting Core Assets
+
+If your site wants to use the built-in `smgen` assets without copying them into the project, enable core static inheritance:
+
+```bash
+INHERIT_CORE_STATIC=1
+
+STYLES=$(cat <<-END
+    /default.css
+END
+)
+
+SCRIPTS=$(cat <<-END
+    /main.js
+END
+)
+```
+
+With `INHERIT_CORE_STATIC=1`, `smgen` copies its own `static/` directory into the output first, then overlays your project's `static/` directory on top. Any file you add locally with the same name overrides the built-in asset.
+
+If you only want a few built-in assets, use `CORE_ASSETS` instead:
+
+```bash
+CORE_ASSETS=$(cat <<-END
+    default.css
+    main.js
+END
+)
+```
+
+`CORE_ASSETS` copies only the listed files from `smgen`'s built-in `static/` directory, then overlays your project's `static/` directory on top. This is useful when you want to consume core assets selectively without copying the full tree.
+
 ### CSS Theming
 
 SMGen's default stylesheet (`static/default.css`) defines a set of CSS custom properties

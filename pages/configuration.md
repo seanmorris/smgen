@@ -55,6 +55,8 @@ In practice, use:
 - `PAGES_DIR` — source pages directory (default `./pages`)
 - `DEV_PORT` — port used by `smgen serve` and `smgen watch` (default `8000`)
 - `DEFAULT_THEME` — class applied to the root `<html>` element
+- `INHERIT_CORE_STATIC` — copy `smgen`'s built-in static assets first, then overlay your project `static/` directory (default `0`)
+- `CORE_ASSETS` — newline-separated list of built-in `smgen` static assets to copy before overlaying your project `static/` directory
 
 ### Executable Locations
 

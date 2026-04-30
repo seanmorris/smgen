@@ -7,6 +7,8 @@ const DEFAULTS = [
 	'STATIC_DIR' => './static',
 	'PAGES_DIR' => './pages',
 	'HELPERS_DIR' => './helpers',
+	'INHERIT_CORE_STATIC' => 0,
+	'CORE_ASSETS' => [],
 	'DEV_PORT' => 8000,
 
 	// Commands
@@ -41,6 +43,7 @@ const LIST_CONFIG_KEYS = [
 	'BODY_SCRIPTS',
 	'INLINE_SCRIPTS',
 	'INLINE_BODY_SCRIPTS',
+	'CORE_ASSETS',
 ];
 
 function normalizeConfigValue($name, $val)

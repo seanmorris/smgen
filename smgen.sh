@@ -3,6 +3,9 @@
 set -euo pipefail
 
 DEFAULT_THEME=theme-cosmic
+SCRIPT_DIR=$( cd -- "$( dirname -- "$( readlink -f "${BASH_SOURCE[0]}" )" )" &> /dev/null && pwd )
+SMGEN_CORE_DIR="${SCRIPT_DIR}"
+SMGEN_CORE_STATIC_DIR="${SCRIPT_DIR}/static"
 
 if [ -f .smgen.yaml ]; then
 	source <(yq e . -os .smgen.yaml)
@@ -23,10 +26,11 @@ TEMPLATE_DIR=${TEMPLATE_DIR:-"./templates"}
 STATIC_DIR=${STATIC_DIR:-"./static"}
 PAGES_DIR=${PAGES_DIR:-"./pages"}
 HELPERS_DIR=${HELPERS_DIR:-"./helpers"}
+INHERIT_CORE_STATIC=${INHERIT_CORE_STATIC:-"0"}
+CORE_ASSETS=${CORE_ASSETS:-""}
 
 DEV_PORT=${DEV_PORT:-"8000"}
 
-SCRIPT_DIR=$( cd -- "$( dirname -- "$( readlink -f "${BASH_SOURCE[0]}" )" )" &> /dev/null && pwd )
 PROJECT_DIR="$(pwd)"
 
 resolve_project_helper_path()
@@ -40,6 +44,52 @@ resolve_project_helper_path()
 	fi
 
 	printf '%s\n' "${SCRIPT_DIR}/helpers/${helper_name}"
+}
+
+copy_static_tree()
+{
+	local source_dir="$1"
+
+	if [ ! -d "${source_dir}" ]; then
+		return 0
+	fi
+
+	shopt -s dotglob nullglob
+	local entries=("${source_dir}"/*)
+	shopt -u dotglob nullglob
+
+	if [ "${#entries[@]}" -eq 0 ]; then
+		return 0
+	fi
+
+	cp -prfv "${entries[@]}" "${OUTPUT_DIR}/"
+}
+
+copy_selected_static_assets()
+{
+	local source_dir="$1"
+	local assets="$2"
+
+	if [ -z "${assets}" ] || [ ! -d "${source_dir}" ]; then
+		return 0
+	fi
+
+	while IFS= read -r asset; do
+		[ -z "${asset}" ] && continue
+
+		local source_path="${source_dir}/${asset#/}"
+		local dest_path="${OUTPUT_DIR}/${asset#/}"
+		local dest_dir
+
+		if [ ! -e "${source_path}" ]; then
+			echo "Core asset not found: ${asset}" >&2
+			exit 1
+		fi
+
+		dest_dir="$(dirname "${dest_path}")"
+		mkdir -p "${dest_dir}"
+		cp -prfv "${source_path}" "${dest_path}"
+	done <<< "${assets}"
 }
 
 resolve_template_path()
@@ -289,7 +339,13 @@ case "${1:-""}" in
 
 			if [ "$#" -eq 1 ] && [ -n "$(ls -A ./)" ]; then
 				echo -e "\e[33;4mCopying static assets...\e[0m"
-				cp -prfv "${STATIC_DIR}/"* "${OUTPUT_DIR}/";
+				if [ -n "${CORE_ASSETS}" ]; then
+					copy_selected_static_assets "${SMGEN_CORE_STATIC_DIR}" "${CORE_ASSETS}"
+				elif [ "${INHERIT_CORE_STATIC}" = "1" ]; then
+					copy_static_tree "${SMGEN_CORE_STATIC_DIR}"
+				fi
+
+				copy_static_tree "${STATIC_DIR}"
 			fi
 
 			if [ -f after-smgen.sh ]; then

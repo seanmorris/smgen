@@ -265,6 +265,84 @@ EOF
 	assert_file_contains "${site}/docs/index.html" 'src="logo.png"'
 }
 
+test_project_can_inherit_core_static_assets()
+{
+	begin_test "inherit-core-static"
+	local site
+	site="$(make_temp_site)"
+	CURRENT_SITE="${site}"
+
+	rm -f "${site}/static/main.js" "${site}/static/default.css" "${site}/static/search.svg"
+
+	cat > "${site}/.smgen-rc" <<'EOF'
+#!/usr/bin/env bash
+
+INHERIT_CORE_STATIC=1
+BASE_URL=${BASE_URL:-"http://localhost:8000"}
+
+STYLES=$( cat <<-END
+	${BASE_URL}/default.css
+END
+)
+
+SCRIPTS=$( cat <<-END
+	${BASE_URL}/main.js
+END
+)
+EOF
+
+	(
+		cd "${site}"
+		"${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}.log" 2>&1
+	)
+
+	assert_file_exists "${site}/docs/default.css"
+	assert_file_exists "${site}/docs/main.js"
+	assert_file_contains "${site}/docs/index.html" "${BASE_URL:-http://localhost:8000}/default.css"
+	assert_file_contains "${site}/docs/index.html" "${BASE_URL:-http://localhost:8000}/main.js"
+}
+
+test_project_can_select_specific_core_assets()
+{
+	begin_test "select-core-assets"
+	local site
+	site="$(make_temp_site)"
+	CURRENT_SITE="${site}"
+
+	rm -f "${site}/static/main.js" "${site}/static/default.css" "${site}/static/search.svg"
+
+	cat > "${site}/.smgen-rc" <<'EOF'
+#!/usr/bin/env bash
+
+BASE_URL=${BASE_URL:-"http://localhost:8000"}
+
+CORE_ASSETS=$( cat <<-END
+	default.css
+	main.js
+END
+)
+
+STYLES=$( cat <<-END
+	${BASE_URL}/default.css
+END
+)
+
+SCRIPTS=$( cat <<-END
+	${BASE_URL}/main.js
+END
+)
+EOF
+
+	(
+		cd "${site}"
+		"${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}.log" 2>&1
+	)
+
+	assert_file_exists "${site}/docs/default.css"
+	assert_file_exists "${site}/docs/main.js"
+	assert_file_missing "${site}/docs/search.svg"
+}
+
 test_external_links_use_noopener()
 {
 	begin_test "external-links-noopener"
@@ -279,6 +357,8 @@ main()
 	test_nested_static_assets_preserve_paths_on_build
 	test_page_template_cannot_escape_template_dir
 	test_project_helpers_override_core_helpers
+	test_project_can_inherit_core_static_assets
+	test_project_can_select_specific_core_assets
 	test_external_links_use_noopener
 
 	echo "PASS: all tests"

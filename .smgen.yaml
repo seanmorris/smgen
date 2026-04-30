@@ -19,6 +19,9 @@ STYLES:
 
 SCRIPTS:
   - /main.js
+  - /nav-state.js
+  - /search.js
+  - /theme-variant.js
 
 ICONS:
   - class: github-icon
