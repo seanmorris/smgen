@@ -356,10 +356,6 @@ case "${1:-""}" in
 		;;
 
 	watch|w)
-		if [ -f .env.local ]; then
-			# shellcheck source=/dev/null
-			. .env.local
-		fi
 		echo "ctrl+c to exit..."
 		sleep 1
 
