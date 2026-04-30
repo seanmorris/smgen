@@ -22,9 +22,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install SMGen
-        run: curl -fsSL https://seanmorris.github.io/smgen/install.sh | sudo bash
-
       - name: Install SMGen Search
         run: npm i -g smgen-search
 
@@ -45,7 +42,7 @@ jobs:
         run: rm -rf ./docs/*
 
       - name: Build site
-        run: smgen build
+        run: ./smgen.sh build
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
