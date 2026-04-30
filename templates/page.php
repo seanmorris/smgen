@@ -76,7 +76,7 @@ $if(math)$
 	$math$
 $endif$
 <?php if(getConf('SCRIPTS')) foreach(getConf('SCRIPTS') as $javascript):?>
-	<script src = "<?=$javascript;?>"></script>
+	<script src = "<?=getConf('BASE_URL');?>/<?=$javascript;?>"></script>
 <?php endforeach; ?>
 <?php if(getConf('INLINE_SCRIPTS')) foreach(getConf('INLINE_SCRIPTS') as $javascriptFile):?>
 	<script><?=file_get_contents($javascriptFile);?></script>
@@ -108,7 +108,7 @@ $endif$
 	</section>
 	<?php include $footerTemplate; ?>
 <?php if(getConf('BODY_SCRIPTS')) foreach(getConf('BODY_SCRIPTS') as $javascript):?>
-	<script src = "<?=$javascript;?>"></script>
+	<script src = "<?=getConf('BASE_URL');?>/<?=$javascript;?>"></script>
 <?php endforeach; ?>
 <?php if(getConf('INLINE_BODY_SCRIPTS')) foreach(getConf('INLINE_BODY_SCRIPTS') as $javascriptFile):?>
 	<script><?=file_get_contents($javascriptFile);?></script>
