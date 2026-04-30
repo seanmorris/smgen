@@ -78,6 +78,19 @@ function getConf($name)
 		return $val;
 	}
 
+	$envVal = getenv($name);
+	if($envVal !== false)
+	{
+		$val = rtrim($envVal);
+
+		if(strpos($val, "\n") > -1)
+		{
+			return explode("\n", $val);
+		}
+
+		return $val;
+	}
+
 	if(array_key_exists($name, DEFAULTS))
 	{
 		return DEFAULTS[$name];

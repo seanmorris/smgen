@@ -101,6 +101,22 @@ EOF
 	assert_file_contains "${site}/public/index.html" 'href="/sitemap.xml"'
 }
 
+test_env_base_url_overrides_localhost_defaults()
+{
+	local site
+	site="$(make_temp_site)"
+
+	(
+		cd "${site}"
+		BASE_URL="https://seanmorris.github.io/smgen" "${SMGEN}" build >/dev/null
+	)
+
+	assert_file_contains "${site}/docs/index.html" 'content="https://seanmorris.github.io/smgen"'
+	assert_file_contains "${site}/docs/index.html" 'href="https://seanmorris.github.io/smgen/icon-16.png"'
+	assert_file_contains "${site}/docs/index.html" 'href = "https://seanmorris.github.io/smgen/index.html"'
+	assert_file_contains "${site}/docs/sitemap.xml" '<loc>https://seanmorris.github.io/smgen/index.html</loc>'
+}
+
 test_nested_static_assets_preserve_paths_on_build()
 {
 	local site
@@ -157,6 +173,7 @@ main()
 {
 	test_default_build_generates_expected_output
 	test_custom_output_dir_builds_and_links_sitemap
+	test_env_base_url_overrides_localhost_defaults
 	test_nested_static_assets_preserve_paths_on_build
 	test_page_template_cannot_escape_template_dir
 	test_external_links_use_noopener
