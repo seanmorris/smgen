@@ -44,6 +44,19 @@ jobs:
       - name: Build site
         run: ./smgen.sh build
 
+      - name: Upload failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-debug-artifacts
+          if-no-files-found: ignore
+          path: |
+            docs/**
+            .smgen.yaml
+            .smgen-rc
+            .github/workflows/build-and-deploy.yml
+            tests/run.sh
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
