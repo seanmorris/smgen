@@ -130,7 +130,8 @@ In practice:
 
 - use `.smgen.yaml` for fixed, declarative values
 - use `.smgen-rc` when values need shell expansion, derived URLs, conditionals, or other runtime logic
-- if the same variable is defined in both files, `.smgen-rc` wins because it is loaded after `.smgen.yaml`
+- use `.env` for local environment-specific overrides
+- if the same variable is defined in multiple sources, later-loaded shell config wins over earlier YAML config
 
 Common settings:
 
@@ -145,13 +146,14 @@ Common settings:
 - `TAGLINE` — subtitle in the default header
 - `ORGANIZATION` — organization name used in the footer
 - `HIGHLIGHT_STYLE` — Pandoc syntax highlighting theme
+- `SMG_SEARCH` — search index generator command
 
 Assets can be configured as newline-separated lists:
 
 - `STYLES`
 - `INLINE_STYLES`
-- `SCRIPTS`
-- `INLINE_SCRIPTS`
+- `SCRIPTS` for `<head>` script tags
+- `INLINE_SCRIPTS` for inline `<head>` scripts
 - `BODY_SCRIPTS`
 - `INLINE_BODY_SCRIPTS`
 
@@ -230,6 +232,8 @@ Available options:
 ## Search Index
 
 If `smgen-search` is installed and available on `PATH`, `smgen build` will generate `search.bin` from your page sources. If it is not installed, the rest of the build still completes.
+
+If you install it locally instead of globally, point `SMG_SEARCH` at the executable, for example `./node_modules/.bin/smgen-search`.
 
 ## Testing
 

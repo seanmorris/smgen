@@ -9,7 +9,7 @@ Customize your site appearance and behavior:
 
 ## Themes, CSS, and JS Injection
 
-Use front-matter or `.smgen-rc` to add custom styles and scripts. For example, if you have files under `static/`:
+Use `.smgen-rc` or `.smgen.yaml` to add custom styles and scripts. For example, if you have files under `static/`:
 
 ```css
 /* static/example.css */
@@ -40,9 +40,9 @@ END
 )
 ```
 
-These will insert `<link rel="stylesheet" href="/example.css">` in the header and `<script src="/example.js"></script>` before `</body>`.
+These will insert `<link rel="stylesheet" href="/example.css">` and `<script src="/example.js"></script>` in the document `<head>`.
 
-To inline files directly in the HTML (rather than referencing them), use the `INLINE_STYLES` and `INLINE_SCRIPTS` variables:
+To inline files directly in the HTML rather than referencing them, use `INLINE_STYLES` and `INLINE_SCRIPTS`:
 
 ```bash
 INLINE_STYLES=$(cat <<-END
@@ -56,7 +56,16 @@ END
 )
 ```
 
-With these set, the contents of `/inline.css` will be embedded inside a `<style>` tag in the `<head>`, and `/inline.js` contents will be embedded inside a `<script>` tag before `</body>`.
+With these set, the contents of `/inline.css` and `/inline.js` will be embedded in the document `<head>`.
+
+If you want scripts at the end of the page instead, use `BODY_SCRIPTS` or `INLINE_BODY_SCRIPTS`:
+
+```bash
+BODY_SCRIPTS=$(cat <<-END
+    /deferred.js
+END
+)
+```
 
 ### CSS Theming
 
@@ -100,7 +109,7 @@ custom theme CSS after the default styles.
 }
 ```
 
-2. Include your theme file after the default stylesheet in `.smgen-rc` (or front‑matter):
+2. Include your theme file after the default stylesheet in `.smgen-rc` or `.smgen.yaml`:
 
 ```bash
 STYLES=$(cat <<-END
@@ -110,7 +119,7 @@ END
 )
 ```
 
-Inject that snippet via `INLINE_SCRIPTS` or place it directly in your `templates/header.php`.
+You can also place theme-specific markup directly in your templates if you need custom structure beyond stylesheet loading.
 
 ### Syntax Highlighting
 
@@ -168,7 +177,7 @@ Below is a minimal example:
   $styles.html()$
 </head>
 <body>
-  <?php include 'navbar.php'; ?>
+  <?php renderNavBar(); ?>
   $body$
 </body>
 </html>
@@ -176,7 +185,7 @@ Below is a minimal example:
 
 ## Front-matter Fields
 
-Leverage custom fields in YAML front-matter to pass variables into templates.
+Leverage custom fields in YAML front-matter to pass variables into Pandoc templates and your PHP wrapper.
 
 ## Custom Templates per Extension
 
@@ -187,11 +196,12 @@ Place extension-specific templates:
 
 ## Template Fallback Logic
 
-The build script selects templates based on front-matter or file extension:
+The build script selects templates in this order:
 
 1. Front-matter field `template`.
-2. Default `templates/page.php`.
-3. Extension-specific `templates/<ext>-page.php` or `.html`.
+2. `templates/<ext>-page.php`, if present.
+3. `templates/<ext>-template.html`, if present.
+4. Default `templates/page.php`.
 
 ## Navigation Customization
 
@@ -229,7 +239,7 @@ Use PHP includes inside templates for reusable markup snippets.
 
 ## Table of Contents Settings
 
-Control the TOC with front-matter `TOC` (true/false) or omit to let default TOC injection.
+Control the TOC with front-matter `TOC`. When omitted, the TOC is enabled by default.
 
 ```yaml
 TOC: false

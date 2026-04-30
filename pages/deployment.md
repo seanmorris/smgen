@@ -11,10 +11,10 @@ You can host the generated site by uploading the contents of `docs/` to any stat
 
 ## GitHub Pages
 
-Make sure to set the BASE_URL correctly. This is ESPECIALLY important if the site exists in a subdirectory on your domain. You can either set it in `.smgen-rc` or use an ENV var on the CLI:
+Make sure to set `BASE_URL` correctly. This is especially important if the site exists in a subdirectory on your domain. Use the full public URL, without a trailing slash. You can either set it in `.smgen-rc` or use an environment variable on the CLI:
 
 ```bash
-BASE_URL=example.com/subdir smgen build
+BASE_URL=https://example.com/subdir smgen build
 ```
 
 GitHub Pages can be handled in two ways: you can simply build to the `docs/` directory and commit that, or you can use a CI workflow that builds with the correct `BASE_URL` automatically.

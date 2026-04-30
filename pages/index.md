@@ -22,6 +22,7 @@ Bash-driven static-site generator that follows the Unix philosophy. Converts Mar
 
 - **inotify-tools** (Filesystem event watcher)
 - **aspell** (SpellChecker)
+- **smgen-search** (Search index generator)
 
 ```bash
 apt install php php-yaml bash pandoc uuid inotify-tools
@@ -52,7 +53,7 @@ cd my-project/
 smgen init
 ```
 
-Then open `.smgen-rc` and configure your details:
+Then open `.smgen-rc` or `.smgen.yaml` and configure your details:
 
 ```bash
 PRODUCT_NAME="Your Product Name"
@@ -74,7 +75,7 @@ author:
 This is my first page content.
 ```
 
-Save it as `pages/index.md` (or any path under `pages/`)
+Save it as `pages/index.md` (or any path under `pages/`).
 
 Build the project:
 
@@ -90,7 +91,7 @@ smgen serve
 
 Open <http://localhost:8000> in your browser to view the site and see the project running.
 
-You can also run `smgen watch` to spin up the dev server and build changes automatically whenever the filesystem is updated:
+On Linux, you can also run `smgen watch` to spin up the dev server and build changes automatically whenever the filesystem is updated:
 
 ```bash
 smgen watch
@@ -102,13 +103,12 @@ Add full-text search to your site with the [smgen-search CLI](https://www.npmjs.
 
 ## Templates
 
-The following files were created by the `init` script, and can be modified for customization. You should commit them to some version control (git) as a backup before you modify them.
+The following files are created by the `init` script and can be modified for customization:
 
-* template/page.php
-* template/header.php
-* template/footer.php
+* `templates/page.php`
+* `templates/header.php`
+* `templates/footer.php`
 
-See [Customization#Themes, CSS, and JS Injection](customization.html#themes-css-and-js-injection) for info on writing/customizing your own styles and javascript.
+See [Customization#Themes, CSS, and JS Injection](customization.html#themes-css-and-js-injection) for info on writing or customizing your own styles and JavaScript.
 
 See [Customization#Writing Your Own Templates](customization.html#writing-your-own-templates) for info on creating/editing your own templates.
-

@@ -5,9 +5,24 @@ weight: 2
 
 # Configuration
 
-You can configure the generator via environment variables, `.smgen-rc`, and pre/post hooks.
+You can configure the generator via `.smgen.yaml`, `.smgen-rc`, `.env`, environment variables, and pre/post hooks.
 
-> **Note:** `smgen` looks for `pages/`, `templates/`, `static/`, and `.smgen-rc` in your current working directory (where you invoke the script). All paths and hooks can be customized via environment variables or a `.smgen-rc` file placed alongside the script.
+> **Note:** `smgen` reads configuration from your current working directory, where you invoke the script. By default it looks for `.smgen.yaml`, `.smgen-rc`, `.env`, `pages/`, `templates/`, and `static/` there.
+
+## Configuration Sources
+
+Configuration is loaded in this order:
+
+1. `.smgen.yaml`
+2. `.smgen-rc`
+3. `.env`
+4. exported environment variables and command-line env overrides
+
+In practice, use:
+
+- `.smgen.yaml` for fixed declarative values
+- `.smgen-rc` when values need shell expansion or derived paths
+- `.env` for local environment-specific overrides
 
 ## Environment Variables
 
@@ -38,6 +53,8 @@ You can configure the generator via environment variables, `.smgen-rc`, and pre/
 - `TEMPLATE_DIR` — template files directory (default `./templates`)
 - `STATIC_DIR` — static assets directory (default `./static`)
 - `PAGES_DIR` — source pages directory (default `./pages`)
+- `DEV_PORT` — port used by `smgen serve` and `smgen watch` (default `8000`)
+- `DEFAULT_THEME` — class applied to the root `<html>` element
 
 ### Executable Locations
 
@@ -45,6 +62,7 @@ You can configure the generator via environment variables, `.smgen-rc`, and pre/
 - `PANDOC` — Pandoc executable (default `pandoc`)
 - `YQ` — `yq` executable (default `yq`)
 - `UUID` — `uuid` executable (default `uuid`)
+- `SMG_SEARCH` — `smgen-search` executable (default `smgen-search`)
 
 
 ## .smgen-rc Overrides
@@ -64,3 +82,5 @@ END
 
 - `before-smgen.sh` — script to run before the main build.
 - `after-smgen.sh` — script to run after the build completes.
+
+`before-smgen.sh` only runs for full `smgen build` invocations, not single-file builds triggered by `smgen build <path>` or `smgen watch`.

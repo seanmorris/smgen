@@ -353,6 +353,7 @@ case "${1:-""}" in
 		echo "Commands:"
 		echo "  init                Initialize a new site in current directory"
 		echo "  build               Build the site from Markdown to HTML"
+		echo "  watch               Build, serve, and rebuild on filesystem changes"
 		echo "  serve               Serve the site locally (requires PHP)"
 		echo "  proofread           Proofread one or all documents"
 		echo "  create-random-page  Create a random lorem markdown page"

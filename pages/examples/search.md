@@ -43,7 +43,7 @@ logic in `static/main.js` to load and query the index. By default, the header co
 ```php
 <input id="search-query"
        placeholder="search"
-       data-search-index="<?=getEnv('BASE_URL');?>/search.bin"
+       data-search-index="<?=getConf('BASE_URL');?>/search.bin"
        data-search-results="#search-results" />
 <ul class="search-menu" id="search-results"></ul>
 ```
