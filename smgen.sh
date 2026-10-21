@@ -20,7 +20,7 @@ SCALAR_CONFIG_KEYS=(
 )
 LIST_CONFIG_KEYS=(
 	STYLES INLINE_STYLES SCRIPTS DEFER_SCRIPTS INLINE_SCRIPTS
-	BODY_SCRIPTS INLINE_BODY_SCRIPTS CORE_ASSETS NAVIGATION_WIDGETS
+	BODY_SCRIPTS INLINE_BODY_SCRIPTS CORE_ASSETS NAVIGATION_WIDGETS PLUGINS
 )
 CONFIG_KEYS=("${SCALAR_CONFIG_KEYS[@]}" "${LIST_CONFIG_KEYS[@]}")
 
@@ -73,6 +73,7 @@ set_config_defaults()
 	INLINE_BODY_SCRIPTS=""
 	CORE_ASSETS=""
 	NAVIGATION_WIDGETS="tree"
+	PLUGINS=""
 }
 
 yaml_has_key()
@@ -133,7 +134,16 @@ list_has_value()
 
 configure_navigation_assets()
 {
-	list_has_value "${NAVIGATION_WIDGETS}" archive || return 0
+	local navigation_file=${1:-}
+
+	if [ -n "${navigation_file}" ] && [ -f "${navigation_file}" ]; then
+		"${PHP}" -r '
+			$data = json_decode(file_get_contents($argv[1]), true);
+			exit(in_array("/archive.css", $data["assets"] ?? [], true) ? 0 : 1);
+		' "${navigation_file}" || return 0
+	else
+		list_has_value "${NAVIGATION_WIDGETS}" archive || return 0
+	fi
 	list_has_value "${STYLES}" /archive.css && return 0
 
 	if [ -n "${STYLES}" ]; then
@@ -188,8 +198,6 @@ load_config()
 			printf -v "${CONFIG_KEY}" '%s' "${CALLER_CONFIG_VALUE[${CONFIG_KEY}]}"
 		fi
 	done
-
-	configure_navigation_assets
 
 	for CONFIG_KEY in "${CONFIG_KEYS[@]}"; do
 		export "${CONFIG_KEY}=${!CONFIG_KEY}"
@@ -434,7 +442,7 @@ prepare_navigation_assets()
 {
 	local destination_dir=$1
 
-	list_has_value "${NAVIGATION_WIDGETS}" archive || return 0
+	list_has_value "${STYLES}" /archive.css || return 0
 	if [ ! -f "${destination_dir}/archive.css" ]; then
 		cp "${SMGEN_CORE_STATIC_DIR}/archive.css" "${destination_dir}/archive.css"
 	fi
@@ -503,14 +511,16 @@ build_site()
 		copy_static_tree "${SMGEN_CORE_STATIC_DIR}" "${BUILD_DIR}"
 	fi
 	copy_static_tree "${STATIC_DIR}" "${BUILD_DIR}"
-	prepare_navigation_assets "${BUILD_DIR}"
-	prepare_search_reader "${BUILD_DIR}"
 
 	NAV_DATA_FILE="${WORK_DIR}/navigation.json"
 	PAGE_MANIFEST="${WORK_DIR}/pages.tsv"
 	: > "${PAGE_MANIFEST}"
 	"${PHP}" "$(resolve_project_helper_path navigation-data.php)" "${PAGES_DIR}" > "${NAV_DATA_FILE}"
 	export SMGEN_NAV_DATA="${NAV_DATA_FILE}"
+	configure_navigation_assets "${NAV_DATA_FILE}"
+	export STYLES
+	prepare_navigation_assets "${BUILD_DIR}"
+	prepare_search_reader "${BUILD_DIR}"
 
 	php_args=(
 		-d display_errors=stderr

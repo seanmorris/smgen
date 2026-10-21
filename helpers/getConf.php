@@ -30,6 +30,9 @@ const DEFAULTS = [
 	'SMG_SEARCH' => 'smgen-search',
 	'ARCHIVE_TITLE' => 'Archive',
 	'NAVIGATION_WIDGETS' => ['tree'],
+	'PLUGINS' => [],
+	'MENUS' => [],
+	'MENU_REGIONS' => [],
 ];
 
 const LIST_CONFIG_KEYS = [
@@ -42,6 +45,7 @@ const LIST_CONFIG_KEYS = [
 	'INLINE_BODY_SCRIPTS',
 	'CORE_ASSETS',
 	'NAVIGATION_WIDGETS',
+	'PLUGINS',
 ];
 
 function normalizeConfigValue($name, $value)

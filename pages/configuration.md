@@ -67,6 +67,9 @@ Both YAML and shell configuration support list values. YAML lists are the cleare
 - `SEARCH_READER` — browser search-reader module (default `/vendor/smgen-search/SearchReader.mjs`)
 - `NAVIGATION_WIDGETS` — ordered list of sidebar widgets; available values are `tree` and `archive` (default `tree`)
 - `ARCHIVE_TITLE` — visible archive-widget heading (default `Archive`)
+- `PLUGINS` — ordered list of menu plugin manifests
+- `MENUS` — mapping of named menus using the `flat`, `tree`, or `timeline` renderer
+- `MENU_REGIONS` — mapping of template region names to ordered menu names
 
 ### Executable Locations
 

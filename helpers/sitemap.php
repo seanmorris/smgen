@@ -1,5 +1,7 @@
 <?php
 
+require_once(__DIR__ . '/frontmatter.php');
+
 $baseUrl = rtrim((string) ($argv[1] ?? ''), '/');
 $manifestPath = $argv[3] ?? ($argv[2] ?? '');
 
@@ -37,7 +39,24 @@ echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . PHP_EOL;
 foreach($pages as $page)
 {
 	$url = $baseUrl . '/' . encodeUrlPath($page['output']);
+	$metadata = parsePageFrontmatter($page['source']);
 	$modified = filemtime($page['source']);
+	if(array_key_exists('modified', $metadata))
+	{
+		$value = $metadata['modified'];
+		if(!is_string($value) && !is_int($value) && !is_float($value))
+		{
+			throw new \RuntimeException('Modified date must be a string or number: ' . $page['source']);
+		}
+		try
+		{
+			$modified = (new \DateTimeImmutable(trim((string) $value)))->getTimestamp();
+		}
+		catch(\Exception $exception)
+		{
+			throw new \RuntimeException('Invalid modified date in ' . $page['source'] . ': ' . $value, 0, $exception);
+		}
+	}
 	?>	<url>
 		<loc><?=xmlEscape($url);?></loc>
 		<lastmod><?=gmdate('Y-m-d', $modified === false ? time() : $modified);?></lastmod>

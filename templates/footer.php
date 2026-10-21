@@ -1,5 +1,6 @@
 <footer class="footer">
 	<div class = "page-rule row">
+		<?php if(menuRegionExists('footer')): ?><nav class="footer-menus"><?php renderMenuRegion('footer', ['showLabel' => true]); ?></nav><?php endif; ?>
 		<div class = "col">
 			<span>&copy; <?=date('Y');?> <?=escapeHtml(getConf('ORGANIZATION') ?: 'Organization Name');?></span>
 			<a href="<?=escapeHtml(resolveAssetUrl('/sitemap.xml'))?>" target="_blank" rel="noopener noreferrer">

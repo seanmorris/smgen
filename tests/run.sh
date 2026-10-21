@@ -793,6 +793,182 @@ EOF
 	assert_file_contains "${DEBUG_DIR}/${CURRENT_TEST}.log" 'Invalid archive date'
 }
 
+test_named_menus_plugins_and_timeline_backfill()
+{
+	begin_test "named-menus"
+	local site checksum
+	site="$(make_temp_site)"
+	CURRENT_SITE="${site}"
+	rm "${site}/.smgen-rc"
+	mkdir -p "${site}/pages/guides" "${site}/plugins/example"
+
+	cat > "${site}/.smgen.yaml" <<'EOF'
+BASE_URL: https://example.test
+SEARCH_ENABLED: 0
+STYLES:
+  - /default.css
+PLUGINS:
+  - plugins/example/smgen.plugin.yaml
+MENUS:
+  primary:
+    label: Primary
+    renderer: flat
+    links:
+      - id: site.external
+        href: https://example.org
+        title: External
+        variant: cta
+  documentation:
+    label: Documentation
+    renderer: tree
+    hierarchy: source
+  archive:
+    label: Site Archive
+    renderer: timeline
+MENU_REGIONS:
+  header: [primary]
+  sidebar: [documentation, archive]
+EOF
+
+	cat > "${site}/plugins/example/smgen.plugin.yaml" <<'EOF'
+id: example
+menus:
+  documentation:
+    links:
+      - id: plugin.guides
+        group: true
+        title: Plugin Guides
+        weight: -10
+    selectors:
+      - include: ["guides/**/*.md"]
+        where:
+          audience: public
+        defaults:
+          parent: plugin.guides
+alter: menu-alter.php
+EOF
+	cat > "${site}/plugins/example/menu-alter.php" <<'EOF'
+<?php
+return static function(array &$registry): void {
+	$registry['links']['primary']['site.external']['title'] = 'Altered External';
+};
+EOF
+
+	cat > "${site}/pages/index.md" <<'EOF'
+---
+title: Home
+modified: 2024-05-06T12:00:00Z
+menus:
+  primary:
+    title: Start
+    weight: -10
+---
+
+# Hello
+EOF
+	cat > "${site}/pages/guides/intro.md" <<'EOF'
+---
+title: Public Guide
+audience: public
+---
+
+# Guide
+EOF
+	cat > "${site}/pages/guides/hidden.md" <<'EOF'
+---
+title: Hidden Guide
+audience: public
+menus:
+  documentation: false
+---
+
+# Hidden
+EOF
+	cat > "${site}/pages/undated.md" <<'EOF'
+---
+title: Undated Post
+menus:
+  archive: true
+---
+
+# Undated
+EOF
+
+	(
+		cd "${site}"
+		"${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-first.log" 2>&1
+	)
+
+	assert_file_contains "${site}/docs/index.html" 'data-menu="primary"'
+	assert_file_contains "${site}/docs/index.html" '>Start</span>'
+	assert_file_contains "${site}/docs/index.html" 'Altered External'
+	assert_file_contains "${site}/docs/index.html" 'menu-link--cta'
+	assert_file_contains "${site}/docs/index.html" 'Plugin Guides'
+	assert_file_contains "${site}/docs/index.html" 'Public Guide'
+	assert_file_excludes "${site}/docs/index.html" 'Hidden Guide'
+	assert_file_contains "${site}/docs/index.html" 'aria-label="Site Archive"'
+	assert_file_contains "${site}/docs/index.html" 'Undated Post'
+	assert_file_contains "${site}/docs/index.html" 'href="https://example.test/archive.css"'
+	assert_file_exists "${site}/docs/archive.css"
+	assert_file_excludes "${site}/docs/index.html" 'archive.js'
+	assert_file_contains "${site}/pages/undated.md" "created: '"
+	assert_file_excludes "${site}/pages/undated.md" 'modified:'
+	assert_file_contains "${site}/docs/sitemap.xml" '<lastmod>2024-05-06</lastmod>'
+
+	checksum="$(sha256sum "${site}/pages/undated.md")"
+	(
+		cd "${site}"
+		"${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-second.log" 2>&1
+	)
+	[ "${checksum}" = "$(sha256sum "${site}/pages/undated.md")" ] || fail "timeline timestamp backfill was not idempotent"
+}
+
+test_named_menu_validation_preserves_output()
+{
+	begin_test "named-menu-validation"
+	local site
+	site="$(make_temp_site)"
+	CURRENT_SITE="${site}"
+	rm "${site}/.smgen-rc"
+	cat > "${site}/.smgen.yaml" <<'EOF'
+SEARCH_ENABLED: 0
+MENUS:
+  primary:
+    renderer: flat
+MENU_REGIONS:
+  header: [primary]
+EOF
+	(
+		cd "${site}"
+		"${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-first.log" 2>&1
+	)
+	assert_file_contains "${site}/docs/index.html" '<h1 id="hello">Hello</h1>'
+
+	cat > "${site}/.smgen.yaml" <<'EOF'
+SEARCH_ENABLED: 0
+MENUS:
+  primary:
+    renderer: flat
+    links:
+      - id: first
+        group: true
+        title: First
+        parent: second
+      - id: second
+        group: true
+        title: Second
+        parent: first
+MENU_REGIONS:
+  header: [primary]
+EOF
+	(
+		cd "${site}"
+		assert_command_fails "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-failure.log" 2>&1
+	)
+	assert_file_contains "${DEBUG_DIR}/${CURRENT_TEST}-failure.log" 'Parent cycle in menu primary'
+	assert_file_contains "${site}/docs/index.html" '<h1 id="hello">Hello</h1>'
+}
+
 test_external_links_use_noopener()
 {
 	begin_test "external-links-noopener"
@@ -823,6 +999,8 @@ main()
 	test_sitemap_encodes_paths_and_navigation_escapes_titles
 	test_archive_navigation_builds_static_calendar_and_timeline
 	test_archive_navigation_rejects_invalid_dates
+	test_named_menus_plugins_and_timeline_backfill
+	test_named_menu_validation_preserves_output
 	test_external_links_use_noopener
 
 	echo "PASS: all tests"

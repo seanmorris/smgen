@@ -1,28 +1,74 @@
 <?php
 
+function navigationEntryHref($entry)
+{
+	return $entry['path'] ?? $entry['href'] ?? null;
+}
+
+function navigationLinkClasses($entry, $active)
+{
+	$classes = [];
+	$variant = $entry['variant'] ?? 'default';
+	if($variant !== 'default')
+	{
+		$classes[] = 'menu-link--' . $variant;
+	}
+	if($active)
+	{
+		$classes[] = 'active-link';
+	}
+	return $classes ? ' class="' . escapeHtml(implode(' ', $classes)) . '"' : '';
+}
+
+function renderNavigationLink($entry)
+{
+	$href = navigationEntryHref($entry);
+	if($href === null)
+	{
+		echo escapeHtml($entry['title'] ?? '');
+		return;
+	}
+	$active = getenv('CURRENT_PAGE') === $href;
+	$icon = $entry['icon'] ?? null;
+	$iconOnly = ($entry['variant'] ?? 'default') === 'icon-only';
+	?><a href="<?=escapeHtml(resolveAssetUrl($href));?>"<?=navigationLinkClasses($entry, $active);?><?=$active ? ' aria-current="page"' : '';?><?=$iconOnly ? ' aria-label="' . escapeHtml($entry['title'] ?? '') . '"' : '';?>><?php
+	if($icon): ?><span class="menu-link-icon menu-link-icon--<?=escapeHtml($icon);?>" aria-hidden="true"></span><?php endif;
+	?><span<?=$iconOnly ? ' class="visually-hidden"' : '';?>><?=escapeHtml($entry['title'] ?? '');?></span><?php
+	if(isset($entry['description']) && $entry['description'] !== ''): ?><small class="menu-link-description"><?=escapeHtml($entry['description']);?></small><?php endif;
+	?></a><?php
+}
+
 function renderNavigationEntries($entries, $idPath = '')
 {
 	?><ul><?php
 	foreach($entries as $index => $entry)
 	{
 		$idSubPath = $idPath . ($idPath === '' ? $index : '-' . $index);
-		if(($entry['type'] ?? '') === 'directory')
+		$isGroup = in_array(($entry['type'] ?? ''), ['directory', 'group'], true);
+		if($isGroup)
 		{
-			?><details <?=($entry['open'] ?? true) ? 'open' : '';?> data-id-path="<?=escapeHtml($idSubPath);?>">
-				<summary><?=escapeHtml($entry['title'] ?? '');?></summary>
+			$expanded = $entry['expanded'] ?? $entry['open'] ?? true;
+			?><details <?=$expanded ? 'open' : '';?> data-id-path="<?=escapeHtml($entry['id'] ?? $idSubPath);?>">
+				<summary><?php renderNavigationLink($entry); ?></summary>
 				<?php renderNavigationEntries($entry['children'] ?? [], $idSubPath); ?>
 			</details><?php
 			continue;
 		}
-
-		$linkPath = $entry['path'] ?? '/';
 		?><li>
-			<a href="<?=escapeHtml(resolveAssetUrl($linkPath));?>" <?=getenv('CURRENT_PAGE') === $linkPath ? 'class="active-link" aria-current="page"' : '';?>>
-				<?=escapeHtml($entry['title'] ?? '');?>
-			</a>
+			<?php renderNavigationLink($entry); ?>
+			<?php if(!empty($entry['children'])) renderFlatNavigationEntries($entry['children']); ?>
 		</li><?php
 	}
 	?></ul><?php
+}
+
+function renderFlatNavigationEntries($entries)
+{
+	?><ul><?php foreach($entries as $entry): ?>
+		<li class="menu-item menu-item--<?=escapeHtml($entry['type'] ?? 'link');?>"><?php renderNavigationLink($entry); ?><?php
+			if(!empty($entry['children'])) renderFlatNavigationEntries($entry['children']);
+		?></li>
+	<?php endforeach; ?></ul><?php
 }
 
 function archiveMonths($archive)
@@ -157,7 +203,7 @@ function renderArchiveCalendar($months, $currentPath)
 	</div><?php
 }
 
-function renderArchiveNavigation($archive, $idPath = '')
+function renderArchiveNavigation($archive, $idPath = '', $title = null)
 {
 	$years = $archive['years'] ?? [];
 	if(!$years)
@@ -172,9 +218,10 @@ function renderArchiveNavigation($archive, $idPath = '')
 		$hasCurrentPage = $hasCurrentPage || archiveYearContainsPath($year, $currentPath);
 	}
 	$prefix = $idPath === '' ? 'archive' : $idPath . '-archive';
+	$title = $title ?? getConf('ARCHIVE_TITLE') ?: 'Archive';
 
-	?><section class="navigation-widget archive-widget" aria-label="<?=escapeHtml(getConf('ARCHIVE_TITLE') ?: 'Archive');?>">
-		<h2 class="navigation-widget-title"><?=escapeHtml(getConf('ARCHIVE_TITLE') ?: 'Archive');?></h2>
+	?><section class="navigation-widget archive-widget" aria-label="<?=escapeHtml($title);?>">
+		<h2 class="navigation-widget-title"><?=escapeHtml($title);?></h2>
 		<?php renderArchiveCalendar(archiveMonths($archive), $currentPath); ?>
 		<ul class="archive-timeline"><?php foreach($years as $yearIndex => $year):
 			$yearCurrent = archiveYearContainsPath($year, $currentPath);
@@ -218,25 +265,89 @@ function loadNavigationData()
 	{
 		$data = ['tree' => $data, 'archive' => ['years' => []]];
 	}
+	if(!isset($data['menus']))
+	{
+		$data['menus'] = [
+			'sidebar' => [
+				'name' => 'sidebar',
+				'label' => 'Navigation',
+				'renderer' => 'tree',
+				'showLabel' => false,
+				'items' => $data['tree'] ?? [],
+			],
+			'archive' => [
+				'name' => 'archive',
+				'label' => getConf('ARCHIVE_TITLE') ?: 'Archive',
+				'renderer' => 'timeline',
+				'showLabel' => true,
+				'timeline' => $data['archive'] ?? ['years' => []],
+			],
+		];
+		$data['regions']['sidebar'] = [];
+		foreach(getConf('NAVIGATION_WIDGETS') ?: ['tree'] as $widget)
+		{
+			$data['regions']['sidebar'][] = $widget === 'tree' ? 'sidebar' : $widget;
+		}
+	}
 	return $data;
 }
 
-function renderNavBar($path = null, $rootPath = null, $idPath = '')
+function renderMenu($menuName, $options = [])
 {
 	$data = loadNavigationData();
-	$widgets = getConf('NAVIGATION_WIDGETS') ?: ['tree'];
-	foreach($widgets as $widget)
+	if(!isset($data['menus'][$menuName]))
 	{
-		switch($widget)
+		throw new \RuntimeException('Unknown menu: ' . $menuName);
+	}
+	$menu = $data['menus'][$menuName];
+	$renderer = $menu['renderer'] ?? 'flat';
+	$idPath = (string) ($options['idPath'] ?? $menuName);
+	if($renderer === 'timeline')
+	{
+		renderArchiveNavigation($menu['timeline'] ?? ['years' => []], $idPath, $menu['label'] ?? $menuName);
+		return;
+	}
+
+	$showLabel = array_key_exists('showLabel', $options) ? (bool) $options['showLabel'] : (bool) ($menu['showLabel'] ?? false);
+	?><div class="menu menu--<?=escapeHtml($renderer);?> menu--<?=escapeHtml($menuName);?>" data-menu="<?=escapeHtml($menuName);?>">
+		<?php if($showLabel): ?><h2 class="menu-title"><?=escapeHtml($menu['label'] ?? $menuName);?></h2><?php endif; ?>
+		<?php if($renderer === 'tree'): ?>
+			<?php renderNavigationEntries($menu['items'] ?? [], $idPath); ?>
+		<?php elseif($renderer === 'flat'): ?>
+			<?php renderFlatNavigationEntries($menu['items'] ?? []); ?>
+		<?php else: ?>
+			<?php throw new \RuntimeException('Unknown menu renderer: ' . $renderer); ?>
+		<?php endif; ?>
+	</div><?php
+}
+
+function menuRegionExists($regionName)
+{
+	$data = loadNavigationData();
+	return array_key_exists($regionName, $data['regions'] ?? []);
+}
+
+function renderMenuRegion($regionName, $options = [])
+{
+	$data = loadNavigationData();
+	if(!array_key_exists($regionName, $data['regions'] ?? []))
+	{
+		throw new \RuntimeException('Unknown menu region: ' . $regionName);
+	}
+	foreach($data['regions'][$regionName] as $menuName)
+	{
+		renderMenu($menuName, $options);
+	}
+}
+
+if(!function_exists('renderNavBar'))
+{
+	function renderNavBar($path = null, $rootPath = null, $idPath = '')
+	{
+		$data = loadNavigationData();
+		foreach($data['regions']['sidebar'] ?? [] as $menuName)
 		{
-			case 'tree':
-				renderNavigationEntries($data['tree'] ?? [], $idPath);
-				break;
-			case 'archive':
-				renderArchiveNavigation($data['archive'] ?? [], $idPath);
-				break;
-			default:
-				throw new \RuntimeException('Unknown navigation widget: ' . $widget);
+			renderMenu($menuName, ['idPath' => $idPath]);
 		}
 	}
 }

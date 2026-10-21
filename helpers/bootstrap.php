@@ -12,10 +12,7 @@ if(is_file($projectNavbar))
 {
 	require($projectNavbar);
 }
-else
-{
-	require(__DIR__ . '/navbar.php');
-}
+require(__DIR__ . '/navbar.php');
 
 function resolveTemplateInclude($path)
 {

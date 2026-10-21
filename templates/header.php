@@ -24,7 +24,7 @@
 						<ul class="search-menu" id="search-results" aria-live="polite"></ul>
 					</div>
 					<?php endif; ?>
-					<div class = "links"></div>
+					<div class = "links"><?php if(menuRegionExists('header')) renderMenuRegion('header'); ?></div>
 				</div>
 			</div>
 		</header>

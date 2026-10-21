@@ -246,7 +246,28 @@ The build script selects templates in this order:
 
 ## Navigation Customization
 
-Use YAML front-matter fields in pages or directory-level `.fm.yaml` files to control the left sidebar navigation. The helper script reads these fields when building the nav bar:
+Define named menus and their template regions in `.smgen.yaml`:
+
+```yaml
+MENUS:
+  primary:
+    renderer: flat
+  docs:
+    label: Documentation
+    renderer: tree
+    hierarchy: source
+  archive:
+    renderer: timeline
+MENU_REGIONS:
+  header: [primary]
+  sidebar: [docs, archive]
+```
+
+Templates render them with `renderMenuRegion('header')`, `renderMenuRegion('sidebar')`, or `renderMenu('primary')`. Menus are compiled into static HTML.
+
+Page and directory frontmatter can use `menus` to select named menus and set `title`, `parent`, `weight`, `expanded`, `variant`, `icon`, or `description` for each link.
+
+The original left-sidebar fields remain compatible:
 
 - `weight` — numeric weight for ordering pages and sections (lower values appear first).
 - `title` — override the link text for a page or section heading.

@@ -159,6 +159,9 @@ Common settings:
 - `SEARCH_READER` — local browser reader module path
 - `NAVIGATION_WIDGETS` — ordered list of sidebar widgets; supports `tree` and `archive`
 - `ARCHIVE_TITLE` — heading for the archive widget (default `Archive`)
+- `PLUGINS` — ordered list of menu plugin manifest paths
+- `MENUS` — named static menu definitions
+- `MENU_REGIONS` — menus placed in template regions
 
 Assets can be configured as newline-separated lists:
 
@@ -223,28 +226,76 @@ For the full documentation source used by this repo, see:
 - `pages/writing-pages.md`
 - `pages/cli.md`
 
-## Archive Navigation
+## Named Menus
 
-SMGen can compile dated pages into a Blogger-style archive with a linked calendar and expandable year and month groups. Add the archive by itself or after the normal page tree:
+SMGen compiles named menus and regions before rendering any page. A menu uses the `flat`, `tree`, or `timeline` renderer:
 
 ```yaml
-NAVIGATION_WIDGETS:
-  - tree
-  - archive
-ARCHIVE_TITLE: Timeline
+MENUS:
+  primary:
+    label: Primary
+    renderer: flat
+    links:
+      - id: project
+        href: https://example.com/project
+        title: Project
+  documentation:
+    label: Documentation
+    renderer: tree
+    hierarchy: source
+  archive:
+    label: Timeline
+    renderer: timeline
+MENU_REGIONS:
+  header: [primary]
+  sidebar: [documentation, archive]
 ```
 
-Then date the pages that should appear in it:
+Pages can join more than one menu and customize each link independently:
 
 ```yaml
 ---
 title: Release notes
 date: 2026-10-21
-leftBarLink: false
+modified: 2026-10-22T14:30:00Z
+menus:
+  primary:
+    title: Releases
+    weight: 20
+  archive: true
 ---
 ```
 
-Any dated page is included unless its front matter sets `archive: false`. Archive data, calendar markup, and hierarchy are generated during the build. Expansion uses native HTML `<details>`, so the widget performs no runtime data request and requires no additional JavaScript. Its small `archive.css` stylesheet is copied and linked only when the `archive` widget is enabled.
+Use `renderMenuRegion('header')` or `renderMenu('primary')` in PHP templates. Link settings support `title`, `parent`, `weight`, `expanded`, `variant`, `icon`, and `description`. Set a membership to `false` to veto a plugin selector.
+
+Timeline menus produce a Blogger-style linked calendar and expandable year/month groups. A selected page uses `date`, then `created`. If both are absent, SMGen derives a creation time from the filesystem or Git and writes it once as `created` in that page's source frontmatter. Author-supplied `modified` controls the sitemap's `lastmod`.
+
+Menu HTML and hierarchy are static. Timeline expansion uses native `<details>`, adds no JavaScript or runtime request, and links `archive.css` only when a populated timeline is placed in a region.
+
+Legacy `leftBarLink`, `leftBarShow`, `NAVIGATION_WIDGETS`, `archive`, and `ARCHIVE_TITLE` remain supported. New `menus` metadata replaces legacy membership inference for that page.
+
+### Menu plugins
+
+List plugin manifests explicitly with `PLUGINS`. A manifest can contribute menus, links, and selectors:
+
+```yaml
+id: guides
+menus:
+  documentation:
+    selectors:
+      - include: ["guides/**/*.md"]
+        exclude: ["guides/drafts/**"]
+        where:
+          audience: public
+        defaults:
+          parent: guides.root
+    links:
+      - id: guides.root
+        group: true
+        title: Guides
+```
+
+Selectors use source-relative paths and exact frontmatter matches. A manifest may name an `alter` PHP file that returns a callable; configured plugin hooks run in order, followed by an optional `helpers/menu-alter.php` site hook.
 
 ## Syntax Highlighting
 
