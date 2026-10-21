@@ -26,7 +26,10 @@ shivammathur's PHP and extension taps:
 ```bash
 brew tap shivammathur/php
 brew tap shivammathur/extensions
+brew trust --formula shivammathur/extensions/yaml@8.4
 ```
+
+The trust command allows only the named YAML formula from the third-party tap.
 
 Install a matching PHP and YAML extension. This example uses PHP 8.4:
 
