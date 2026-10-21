@@ -29,6 +29,16 @@ function navigationToken($value, $context)
 	return $value;
 }
 
+function navigationLinkId($value)
+{
+	$value = (string) $value;
+	if(!preg_match('~^[A-Za-z0-9][A-Za-z0-9._:/-]*$~', $value))
+	{
+		throw new \RuntimeException('Invalid menu link id: ' . $value);
+	}
+	return $value;
+}
+
 function navigationList($value, $context)
 {
 	if($value === null || $value === '')
@@ -428,7 +438,7 @@ function navigationApplyContribution(&$links, $contribution, $definitions, $page
 		{
 			throw new \RuntimeException('Link ' . $index . ' for ' . $menu . ' requires an id.');
 		}
-		$id = navigationToken($id, 'menu link id');
+		$id = navigationLinkId($id);
 		if(isset($links[$menu][$id]) && !$replace && ($links[$menu][$id]['source'] ?? null) !== ($link['source'] ?? null))
 		{
 			throw new \RuntimeException('Duplicate menu link id in ' . $menu . ': ' . $id);
