@@ -28,6 +28,8 @@ const DEFAULTS = [
 	'SEARCH_ENABLED' => 0,
 	'SEARCH_READER' => '/vendor/smgen-search/SearchReader.mjs',
 	'SMG_SEARCH' => 'smgen-search',
+	'ARCHIVE_TITLE' => 'Archive',
+	'NAVIGATION_WIDGETS' => ['tree'],
 ];
 
 const LIST_CONFIG_KEYS = [
@@ -39,6 +41,7 @@ const LIST_CONFIG_KEYS = [
 	'INLINE_SCRIPTS',
 	'INLINE_BODY_SCRIPTS',
 	'CORE_ASSETS',
+	'NAVIGATION_WIDGETS',
 ];
 
 function normalizeConfigValue($name, $value)

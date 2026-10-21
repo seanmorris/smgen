@@ -16,6 +16,8 @@ Markdown pages can have YAML front-matter. Front-matter **MUST** be the first ch
 ---
 title: <string> # Change the title of the page in the navbar, defaults to the filename
 weight: <string> # The "weight" of the link in the navbar, defaults to 0
+date: <date> # Add this page to the archive widget, for example 2026-10-21
+archive: <boolean> # Set false to keep a dated page out of the archive
 
 leftBarLink: <boolean> # Whether to add this page to the left navbar. Defaults to true
 leftBarShow: <boolean> # Whether to show the left navbar on this page. Defaults to true
@@ -26,6 +28,8 @@ footer: <filepath> # The footer template to use, defaults to "templates/footer.p
 noSearch: <boolean> # Suppress this page from search; defaults to FALSE
 ---
 ```
+
+When the `archive` navigation widget is enabled, dated pages are grouped newest-first by year and month. They remain eligible for the archive when `leftBarLink` is `false`, allowing post-like pages to stay out of the normal page tree. SMGen generates the calendar and timeline as static HTML.
 
 ## Markdown
 

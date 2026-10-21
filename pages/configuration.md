@@ -65,6 +65,8 @@ Both YAML and shell configuration support list values. YAML lists are the cleare
 - `CORE_ASSETS` — newline-separated list of built-in `smgen` static assets to copy before overlaying your project `static/` directory
 - `SEARCH_ENABLED` — `auto`, `1`, or `0` (default `auto`)
 - `SEARCH_READER` — browser search-reader module (default `/vendor/smgen-search/SearchReader.mjs`)
+- `NAVIGATION_WIDGETS` — ordered list of sidebar widgets; available values are `tree` and `archive` (default `tree`)
+- `ARCHIVE_TITLE` — visible archive-widget heading (default `Archive`)
 
 ### Executable Locations
 

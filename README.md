@@ -157,6 +157,8 @@ Common settings:
 - `SMG_SEARCH` — search index generator command
 - `SEARCH_ENABLED` — `auto`, `1`, or `0` (default `auto`)
 - `SEARCH_READER` — local browser reader module path
+- `NAVIGATION_WIDGETS` — ordered list of sidebar widgets; supports `tree` and `archive`
+- `ARCHIVE_TITLE` — heading for the archive widget (default `Archive`)
 
 Assets can be configured as newline-separated lists:
 
@@ -220,6 +222,29 @@ For the full documentation source used by this repo, see:
 - `pages/customization.md`
 - `pages/writing-pages.md`
 - `pages/cli.md`
+
+## Archive Navigation
+
+SMGen can compile dated pages into a Blogger-style archive with a linked calendar and expandable year and month groups. Add the archive by itself or after the normal page tree:
+
+```yaml
+NAVIGATION_WIDGETS:
+  - tree
+  - archive
+ARCHIVE_TITLE: Timeline
+```
+
+Then date the pages that should appear in it:
+
+```yaml
+---
+title: Release notes
+date: 2026-10-21
+leftBarLink: false
+---
+```
+
+Any dated page is included unless its front matter sets `archive: false`. Archive data, calendar markup, and hierarchy are generated during the build. Expansion uses native HTML `<details>`, so the widget performs no runtime data request and requires no additional JavaScript.
 
 ## Syntax Highlighting
 

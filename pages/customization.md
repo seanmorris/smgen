@@ -253,6 +253,17 @@ Use YAML front-matter fields in pages or directory-level `.fm.yaml` files to con
 - `leftBarLink` — set to `false` to omit a specific page or directory from the nav.
 - `leftBarShow` — set to `false` in a page's front-matter to hide the entire sidebar on that page.
 
+The sidebar can compose the normal page tree with a dated archive:
+
+```yaml
+NAVIGATION_WIDGETS:
+  - tree
+  - archive
+ARCHIVE_TITLE: Timeline
+```
+
+Pages with a `date` value appear in an expandable year/month timeline with a calendar above it. Set `archive: false` on a dated page to omit it. The build precomputes the hierarchy, counts, and calendar links; the browser uses native `<details>` elements for expansion.
+
 ### Examples
 
 Front-matter in an individual page (`foo.md`):

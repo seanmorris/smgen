@@ -15,12 +15,12 @@ PROJECT_DIR=$(pwd -P)
 SCALAR_CONFIG_KEYS=(
 	BASE_URL OUTPUT_DIR PAGES_DIR TEMPLATE_DIR STATIC_DIR HELPERS_DIR
 	DEFAULT_THEME PRODUCT_NAME ORGANIZATION TAGLINE TITLE_PREFIX HIGHLIGHT_STYLE
-	HEADER FOOTER DEV_PORT INHERIT_CORE_STATIC SEARCH_ENABLED SEARCH_READER
+	HEADER FOOTER DEV_PORT INHERIT_CORE_STATIC SEARCH_ENABLED SEARCH_READER ARCHIVE_TITLE
 	PHP PANDOC YQ SMG_SEARCH ASPELL ASPELL_DICT SMGEN_ENVIRONMENT environment
 )
 LIST_CONFIG_KEYS=(
 	STYLES INLINE_STYLES SCRIPTS DEFER_SCRIPTS INLINE_SCRIPTS
-	BODY_SCRIPTS INLINE_BODY_SCRIPTS CORE_ASSETS
+	BODY_SCRIPTS INLINE_BODY_SCRIPTS CORE_ASSETS NAVIGATION_WIDGETS
 )
 CONFIG_KEYS=("${SCALAR_CONFIG_KEYS[@]}" "${LIST_CONFIG_KEYS[@]}")
 
@@ -55,6 +55,7 @@ set_config_defaults()
 	INHERIT_CORE_STATIC="0"
 	SEARCH_ENABLED="auto"
 	SEARCH_READER="/vendor/smgen-search/SearchReader.mjs"
+	ARCHIVE_TITLE="Archive"
 	PHP="php"
 	PANDOC="pandoc"
 	YQ="yq"
@@ -71,6 +72,7 @@ set_config_defaults()
 	BODY_SCRIPTS=""
 	INLINE_BODY_SCRIPTS=""
 	CORE_ASSETS=""
+	NAVIGATION_WIDGETS="tree"
 }
 
 yaml_has_key()
@@ -407,7 +409,6 @@ build_site()
 	local directory base extension page_name destination template toc_value
 	local template_file style inline_style pages_root
 	local BUILD_DIR="" WORK_DIR="" NAV_DATA_FILE="" PAGE_MANIFEST="" OUTPUT_ABS=""
-	local new_output_installed=0 build_committed=0
 	local -a php_args pandoc_args
 	local -A output_destinations=()
 
@@ -432,20 +433,31 @@ build_site()
 
 	output_parent=$(dirname "${OUTPUT_ABS}")
 	output_name=$(basename "${OUTPUT_ABS}")
+	SMGEN_CLEANUP_BUILD_DIR=""
+	SMGEN_CLEANUP_WORK_DIR=""
+	SMGEN_CLEANUP_OUTPUT_ABS=${OUTPUT_ABS}
+	SMGEN_CLEANUP_BACKUP_PATH=""
+	SMGEN_CLEANUP_OUTPUT_INSTALLED=0
+	SMGEN_CLEANUP_BUILD_COMMITTED=0
 	cleanup_build()
 	{
-		if [ "${new_output_installed}" = "1" ] && [ "${build_committed}" != "1" ]; then
-			rm -rf -- "${OUTPUT_ABS}"
-			[ -z "${backup_path}" ] || [ ! -e "${backup_path}" ] || mv "${backup_path}" "${OUTPUT_ABS}"
+		if [ "${SMGEN_CLEANUP_OUTPUT_INSTALLED:-0}" = "1" ] && [ "${SMGEN_CLEANUP_BUILD_COMMITTED:-0}" != "1" ]; then
+			rm -rf -- "${SMGEN_CLEANUP_OUTPUT_ABS}"
+			[ -z "${SMGEN_CLEANUP_BACKUP_PATH:-}" ] || [ ! -e "${SMGEN_CLEANUP_BACKUP_PATH}" ] || mv "${SMGEN_CLEANUP_BACKUP_PATH}" "${SMGEN_CLEANUP_OUTPUT_ABS}"
 		fi
-		[ -z "${BUILD_DIR:-}" ] || rm -rf -- "${BUILD_DIR}"
-		[ -z "${WORK_DIR:-}" ] || rm -rf -- "${WORK_DIR}"
+		[ -z "${SMGEN_CLEANUP_BUILD_DIR:-}" ] || rm -rf -- "${SMGEN_CLEANUP_BUILD_DIR}"
+		[ -z "${SMGEN_CLEANUP_WORK_DIR:-}" ] || rm -rf -- "${SMGEN_CLEANUP_WORK_DIR}"
+		SMGEN_CLEANUP_BUILD_DIR=""
+		SMGEN_CLEANUP_WORK_DIR=""
+		SMGEN_CLEANUP_BACKUP_PATH=""
 		trap - RETURN EXIT
 	}
 	trap cleanup_build RETURN EXIT
 	BUILD_DIR=$(mktemp -d "${output_parent}/.${output_name}.smgen-build.XXXXXX")
+	SMGEN_CLEANUP_BUILD_DIR=${BUILD_DIR}
 	chmod 0755 "${BUILD_DIR}"
 	WORK_DIR=$(mktemp -d "${TMPDIR:-/tmp}/smgen.XXXXXX")
+	SMGEN_CLEANUP_WORK_DIR=${WORK_DIR}
 
 	if [ -n "${CORE_ASSETS}" ]; then
 		copy_selected_static_assets "${SMGEN_CORE_STATIC_DIR}" "${BUILD_DIR}" "${CORE_ASSETS}"
@@ -458,7 +470,7 @@ build_site()
 	NAV_DATA_FILE="${WORK_DIR}/navigation.json"
 	PAGE_MANIFEST="${WORK_DIR}/pages.tsv"
 	: > "${PAGE_MANIFEST}"
-	"${PHP}" "${SCRIPT_DIR}/helpers/navigation-data.php" "${PAGES_DIR}" > "${NAV_DATA_FILE}"
+	"${PHP}" "$(resolve_project_helper_path navigation-data.php)" "${PAGES_DIR}" > "${NAV_DATA_FILE}"
 	export SMGEN_NAV_DATA="${NAV_DATA_FILE}"
 
 	php_args=(
@@ -556,6 +568,7 @@ build_site()
 
 	if [ -e "${OUTPUT_ABS}" ]; then
 		backup_path=$(mktemp -d "${output_parent}/.${output_name}.smgen-backup.XXXXXX")
+		SMGEN_CLEANUP_BACKUP_PATH=${backup_path}
 		rmdir "${backup_path}"
 		mv "${OUTPUT_ABS}" "${backup_path}"
 	fi
@@ -565,17 +578,20 @@ build_site()
 		return 1
 	fi
 	BUILD_DIR=""
-	new_output_installed=1
+	SMGEN_CLEANUP_BUILD_DIR=""
+	SMGEN_CLEANUP_OUTPUT_INSTALLED=1
 
 	if [ -f ./after-smgen.sh ] && ! bash ./after-smgen.sh; then
 		echo "after-smgen.sh failed; restored the previous output." >&2
 		return 1
 	fi
 
-	build_committed=1
+	SMGEN_CLEANUP_BUILD_COMMITTED=1
 	[ -z "${backup_path}" ] || rm -rf -- "${backup_path}"
+	SMGEN_CLEANUP_BACKUP_PATH=""
 	rm -rf -- "${WORK_DIR}"
 	WORK_DIR=""
+	SMGEN_CLEANUP_WORK_DIR=""
 	trap - RETURN EXIT
 }
 

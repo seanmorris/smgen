@@ -507,6 +507,30 @@ EOF
 	assert_file_excludes "${site}/docs/index.html" 'Replacement'
 }
 
+test_early_build_failure_reports_original_error()
+{
+	begin_test "early-build-failure"
+	local site fake_bin
+	site="$(make_temp_site)"
+	CURRENT_SITE="${site}"
+	fake_bin="${TEMP_ROOT}/failing-mktemp-bin"
+	mkdir -p "${fake_bin}"
+	cat > "${fake_bin}/mktemp" <<'EOF'
+#!/usr/bin/env bash
+echo "simulated mktemp failure" >&2
+exit 12
+EOF
+	chmod +x "${fake_bin}/mktemp"
+
+	(
+		cd "${site}"
+		assert_command_fails env PATH="${fake_bin}:${PATH}" "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}.log" 2>&1
+	)
+
+	assert_file_contains "${DEBUG_DIR}/${CURRENT_TEST}.log" 'simulated mktemp failure'
+	assert_file_excludes "${DEBUG_DIR}/${CURRENT_TEST}.log" 'unbound variable'
+}
+
 test_page_argument_still_rebuilds_the_complete_site()
 {
 	begin_test "page-argument-full-build"
@@ -648,6 +672,118 @@ EOF
 	assert_file_excludes "${site}/docs/index.html" '<script>alert(1)</script>'
 }
 
+test_archive_navigation_builds_static_calendar_and_timeline()
+{
+	begin_test "archive-navigation"
+	local site
+	site="$(make_temp_site)"
+	CURRENT_SITE="${site}"
+
+	cat >> "${site}/.smgen-rc" <<'EOF'
+
+ARCHIVE_TITLE="Publication timeline"
+NAVIGATION_WIDGETS=$(cat <<-END
+	tree
+	archive
+END
+)
+EOF
+
+	cat > "${site}/pages/latest.md" <<'EOF'
+---
+title: Latest post
+date: 2026-10-21T18:30:00Z
+leftBarLink: false
+---
+
+# Latest
+EOF
+	cat > "${site}/pages/same-day.md" <<'EOF'
+---
+title: Earlier that day
+date: 2026-10-21T08:00:00Z
+leftBarLink: false
+---
+
+# Same day
+EOF
+	cat > "${site}/pages/september.md" <<'EOF'
+---
+title: September post
+date: 2026-09-03
+leftBarLink: false
+---
+
+# September
+EOF
+	cat > "${site}/pages/older.md" <<'EOF'
+---
+title: Older post
+date: 2025-05-04
+leftBarLink: false
+---
+
+# Older
+EOF
+	cat > "${site}/pages/private.md" <<'EOF'
+---
+title: Private dated page
+date: 2026-10-20
+archive: false
+leftBarLink: false
+---
+
+# Private
+EOF
+
+	(
+		cd "${site}"
+		BASE_URL=https://example.test/blog "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}.log" 2>&1
+	)
+
+	assert_file_contains "${site}/docs/index.html" 'aria-label="Publication timeline"'
+	assert_file_contains "${site}/docs/index.html" 'class="archive-calendar"'
+	assert_file_contains "${site}/docs/index.html" '>October 2026 publication calendar</caption>'
+	assert_file_contains "${site}/docs/index.html" 'data-id-path="archive-2026"'
+	assert_file_contains "${site}/docs/index.html" 'data-id-path="archive-2026-10"'
+	assert_file_contains "${site}/docs/index.html" '<span class="archive-count">(3)</span>'
+	assert_file_contains "${site}/docs/index.html" 'aria-label="October 21, 2026: 2 posts"'
+	assert_file_contains "${site}/docs/index.html" '<span class="archive-day-count" aria-hidden="true">2</span>'
+	assert_file_contains "${site}/docs/index.html" 'href="https://example.test/blog/latest.html"'
+	assert_file_contains "${site}/docs/index.html" 'Latest post'
+	assert_file_contains "${site}/docs/index.html" '>Home'
+	assert_file_excludes "${site}/docs/index.html" 'Private dated page'
+
+	assert_file_contains "${site}/docs/older.html" '>May 2025 publication calendar</caption>'
+	assert_file_contains "${site}/docs/older.html" '<details open data-id-path="archive-2025"'
+	assert_file_contains "${site}/docs/older.html" '<details open data-id-path="archive-2025-05"'
+	assert_file_contains "${site}/docs/older.html" 'aria-current="date"'
+	assert_file_contains "${site}/docs/older.html" 'class="active-link" aria-current="page"'
+}
+
+test_archive_navigation_rejects_invalid_dates()
+{
+	begin_test "archive-invalid-date"
+	local site
+	site="$(make_temp_site)"
+	CURRENT_SITE="${site}"
+	printf '\nNAVIGATION_WIDGETS=archive\n' >> "${site}/.smgen-rc"
+	cat > "${site}/pages/broken.md" <<'EOF'
+---
+title: Broken date
+date: definitely-not-a-date
+---
+
+# Broken
+EOF
+
+	(
+		cd "${site}"
+		assert_command_fails "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}.log" 2>&1
+	)
+	assert_file_contains "${DEBUG_DIR}/${CURRENT_TEST}.log" 'Invalid archive date'
+}
+
 test_external_links_use_noopener()
 {
 	begin_test "external-links-noopener"
@@ -669,12 +805,15 @@ main()
 	test_frontmatter_controls_templates_navigation_and_toc
 	test_successful_build_replaces_the_complete_output
 	test_failed_build_preserves_previous_output
+	test_early_build_failure_reports_original_error
 	test_page_argument_still_rebuilds_the_complete_site
 	test_hooks_run_and_after_failure_rolls_back
 	test_custom_template_directory_is_supported
 	test_unsafe_output_and_core_asset_paths_are_rejected
 	test_search_is_optional_local_and_lazy
 	test_sitemap_encodes_paths_and_navigation_escapes_titles
+	test_archive_navigation_builds_static_calendar_and_timeline
+	test_archive_navigation_rejects_invalid_dates
 	test_external_links_use_noopener
 
 	echo "PASS: all tests"
