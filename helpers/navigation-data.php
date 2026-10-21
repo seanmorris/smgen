@@ -56,6 +56,17 @@ function navigationList($value, $context)
 	return $value;
 }
 
+function navigationRejectUnknownKeys($value, $allowed, $context)
+{
+	foreach(array_keys($value) as $key)
+	{
+		if(!in_array($key, $allowed, true))
+		{
+			throw new \RuntimeException('Unknown ' . $context . ' field: ' . $key);
+		}
+	}
+}
+
 function normalizeArchiveDate($value, $path)
 {
 	if(!is_string($value) && !is_int($value) && !is_float($value))
@@ -182,6 +193,11 @@ function navigationMergeMenuDefinitions(&$definitions, &$contributions, $menus, 
 		{
 			throw new \RuntimeException('Menu ' . $name . ' from ' . $provider . ' must be a mapping.');
 		}
+		navigationRejectUnknownKeys(
+			$config,
+			['label', 'renderer', 'hierarchy', 'showLabel', 'links', 'selectors'],
+			'menu ' . $name
+		);
 		$definition = $definitions[$name] ?? [
 			'name' => $name,
 			'label' => ucwords(str_replace(['-', '_'], ' ', $name)),
@@ -362,6 +378,7 @@ function navigationApplyContribution(&$links, $contribution, $definitions, $page
 		{
 			throw new \RuntimeException('Selector ' . $selectorIndex . ' for ' . $menu . ' must be a mapping.');
 		}
+		navigationRejectUnknownKeys($selector, ['include', 'exclude', 'where', 'defaults'], 'selector');
 		$include = navigationList($selector['include'] ?? ['**/*'], 'selector include');
 		$exclude = navigationList($selector['exclude'] ?? [], 'selector exclude');
 		$where = $selector['where'] ?? [];
@@ -398,6 +415,11 @@ function navigationApplyContribution(&$links, $contribution, $definitions, $page
 		{
 			throw new \RuntimeException('Link ' . $index . ' for ' . $menu . ' must be a mapping.');
 		}
+		navigationRejectUnknownKeys(
+			$config,
+			['id', 'page', 'href', 'group', 'replace', 'title', 'parent', 'weight', 'expanded', 'variant', 'icon', 'description'],
+			'menu link'
+		);
 		$replace = (bool) ($config['replace'] ?? false);
 		$pageReference = $config['page'] ?? null;
 		$href = $config['href'] ?? null;
