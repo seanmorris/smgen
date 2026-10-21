@@ -1,4 +1,5 @@
 ---
+title: License
 weight: 100000
 noSearch: true
 ---

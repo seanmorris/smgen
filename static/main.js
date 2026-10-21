@@ -61,51 +61,37 @@ document.addEventListener('click', event => {
 	}
 });
 
+const prefetchedUrls = new Set();
+let prefetchTimer;
+
 document.addEventListener('mouseover', event => {
-	const href = event.target.getAttribute('href');
+	const anchor = event.target.closest?.('a[href]');
+	if(!anchor || anchor.contains(event.relatedTarget)) return;
 
-	if(!href)
-	{
-		return;
-	}
+	clearTimeout(prefetchTimer);
+	prefetchTimer = setTimeout(() => {
+		const connection = navigator.connection;
+		if(connection?.saveData || /(^|-)2g$/.test(connection?.effectiveType ?? '')) return;
+		if(anchor.target || anchor.hasAttribute('download')) return;
 
-	const url = new URL(href, location);
+		const url = new URL(anchor.href, location.href);
+		if(!/^https?:$/.test(url.protocol) || url.origin !== location.origin) return;
+		if(url.pathname === location.pathname && url.search === location.search) return;
+		url.hash = '';
+		if(prefetchedUrls.has(url.href)) return;
 
-	if(url.pathname === location.pathname)
-	{
-		return;
-	}
-
-	if(url.origin !== location.origin)
-	{
-		return;
-	}
-
-	fetch(href);
+		prefetchedUrls.add(url.href);
+		const link = document.createElement('link');
+		link.rel = 'prefetch';
+		link.href = url.href;
+		link.as = 'document';
+		document.head.append(link);
+	}, 75);
 });
 
-document.addEventListener('mousedown', event => {
-	if(event.buttons !== 0x1)
-	{
-		return;
-	}
-
-	let target = event.target;
-	let href;
-
-	while(target && target.getAttribute && !href)
-	{
-		href = target.getAttribute('href');
-
-		if(href)
-		{
-			event.preventDefault();
-			event.target.click();
-			return;
-		}
-
-		target = target.parentNode;
-	}
+document.addEventListener('mouseout', event => {
+	const anchor = event.target.closest?.('a[href]');
+	if(anchor && !anchor.contains(event.relatedTarget)) clearTimeout(prefetchTimer);
 });
 
 document.addEventListener('DOMContentLoaded', () => {

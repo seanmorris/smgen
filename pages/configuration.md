@@ -13,16 +13,21 @@ You can configure the generator via `.smgen.yaml`, `.smgen-rc`, `.env`, environm
 
 Configuration is loaded in this order:
 
-1. `.smgen.yaml`
-2. `.smgen-rc`
-3. `.env`
-4. exported environment variables and command-line env overrides
+1. built-in defaults
+2. `.smgen.yaml`
+3. `.smgen.<environment>.yaml`, selected with `SMGEN_ENVIRONMENT`
+4. `.smgen-rc`
+5. `.env`
+6. exported environment variables and command-line overrides
 
 In practice, use:
 
 - `.smgen.yaml` for fixed declarative values
 - `.smgen-rc` when values need shell expansion or derived paths
 - `.env` for local environment-specific overrides
+- `.smgen.<environment>.yaml` for named targets such as staging or production
+
+Both YAML and shell configuration support list values. YAML lists are the clearest choice for `STYLES`, scripts, and asset lists.
 
 ## Environment Variables
 
@@ -43,6 +48,7 @@ In practice, use:
 ### Page Behavior
 
 - `SCRIPTS` — newline-separated list of JS files to include (via `<script src>`)
+- `DEFER_SCRIPTS` — newline-separated list of JS files to include with `defer`
 - `INLINE_SCRIPTS` — newline-separated list of JS files to inline in `<script>` tags in `<head>`
 - `BODY_SCRIPTS` — newline-separated list of JS files to include before `</body>`
 - `INLINE_BODY_SCRIPTS` — newline-separated list of JS files to inline before `</body>`
@@ -57,13 +63,14 @@ In practice, use:
 - `DEFAULT_THEME` — class applied to the root `<html>` element
 - `INHERIT_CORE_STATIC` — copy `smgen`'s built-in static assets first, then overlay your project `static/` directory (default `0`)
 - `CORE_ASSETS` — newline-separated list of built-in `smgen` static assets to copy before overlaying your project `static/` directory
+- `SEARCH_ENABLED` — `auto`, `1`, or `0` (default `auto`)
+- `SEARCH_READER` — browser search-reader module (default `/vendor/smgen-search/SearchReader.mjs`)
 
 ### Executable Locations
 
 - `PHP` — PHP executable (default `php`)
 - `PANDOC` — Pandoc executable (default `pandoc`)
 - `YQ` — `yq` executable (default `yq`)
-- `UUID` — `uuid` executable (default `uuid`)
 - `SMG_SEARCH` — `smgen-search` executable (default `smgen-search`)
 
 
@@ -85,4 +92,8 @@ END
 - `before-smgen.sh` — script to run before the main build.
 - `after-smgen.sh` — script to run after the build completes.
 
-`before-smgen.sh` only runs for full `smgen build` invocations, not single-file builds triggered by `smgen build <path>` or `smgen watch`.
+Hooks run for every build, including rebuilds started by `smgen watch`. The before hook runs before rendering. The after hook runs after the new output has been installed; if it fails, SMGen restores the previous output.
+
+## Output Ownership
+
+SMGen builds into a temporary sibling directory and atomically replaces `OUTPUT_DIR` after a successful render. Files left in an old output disappear on the next successful build. Keep authored assets in `STATIC_DIR`, because `OUTPUT_DIR` is fully managed by SMGen.

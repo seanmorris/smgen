@@ -1,26 +1,3 @@
 #!/usr/bin/env bash
 
-DEV_PORT=8000
 BASE_URL=${BASE_URL:-"http://localhost:${DEV_PORT}"}
-DEFAULT_THEME=theme-cosmic
-
-STATIC_DIR=${STATIC_DIR:-"./static"}
-
-STYLES=$( cat <<-END
-	${BASE_URL}/default.css
-	${BASE_URL}/techno.css
-	${BASE_URL}/cosmic.css
-END
-)
-
-SCRIPTS=$( cat <<-END
-	${BASE_URL}/main.js
-END
-)
-
-PRODUCT_NAME="SMGen"
-TAGLINE="Static Markup Generator"
-ORGANIZATION="Sean Morris"
-TITLE_PREFIX="SMGen"
-
-HEADER="templates/smgen-header.php"

@@ -9,7 +9,11 @@ STYLES=$( cat <<-END
 END
 )
 
-SCRIPTS=$( cat <<-END
+SCRIPTS=""
+
+DEFER_SCRIPTS=$( cat <<-END
 	${BASE_URL}/main.js
 END
 )
+
+SEARCH_ENABLED=0

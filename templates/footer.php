@@ -1,9 +1,9 @@
 <footer class="footer">
 	<div class = "page-rule row">
 		<div class = "col">
-			<span>&copy; <?=date('Y');?> <?=getConf('ORGANIZATION') ?: 'Organization Name';?></span>
-			<a href = "<?=resolveAssetUrl('/sitemap.xml')?>" target = "_blank">
-				<img src = "<?=resolveAssetUrl('/sitemap-badge.png')?>" alt = "sitemap" width = "80" height = "15" alt = "xml sitemap badge">
+			<span>&copy; <?=date('Y');?> <?=escapeHtml(getConf('ORGANIZATION') ?: 'Organization Name');?></span>
+			<a href="<?=escapeHtml(resolveAssetUrl('/sitemap.xml'))?>" target="_blank" rel="noopener noreferrer">
+				<img src="<?=escapeHtml(resolveAssetUrl('/sitemap-badge.png'))?>" width="80" height="15" alt="XML sitemap">
 			</a>
 		</div>
 	</div>

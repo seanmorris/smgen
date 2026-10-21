@@ -14,17 +14,27 @@ This example demonstrates how to add full-text search to your site using [smgen-
 
 ## 1. Install `smgen-search`
 
-Install the search tooling globally:
+Install the pinned search tooling globally:
 
 ```bash
-npm install -g smgen-search
+npm install -g smgen-search@0.0.1
 ```
 
 ## 2. Configure the search index build
 
-The `smgen build` command automatically generates a binary search index if the
-`smgen-search` CLI is available on your `PATH`. The index is written to
-`static/search.bin` and copied into your output directory on each build.
+Enable search in `.smgen.yaml`:
+
+```yaml
+SEARCH_ENABLED: 1
+SEARCH_READER: /vendor/smgen-search/SearchReader.mjs
+DEFER_SCRIPTS:
+  - /search.js
+```
+
+The `smgen build` command generates `search.bin` directly in the staged output
+when the `smgen-search` CLI is available. With `SEARCH_ENABLED=1`, the build
+fails if neither the CLI nor a prebuilt `static/search.bin` is available. Use
+`SEARCH_ENABLED=auto` to enable search only when one of those inputs exists.
 
 If you installed `smgen-search` locally (for example, in `node_modules`), you can
 override the search command by setting the `SMG_SEARCH` variable in your
@@ -37,58 +47,20 @@ SMG_SEARCH=./node_modules/.bin/smgen-search
 
 ## 3. Enable the search UI
 
-The default templates include a search input in `templates/header.php` and client-side
-logic in `static/main.js` to load and query the index. By default, the header contains:
+The default templates render the search input only when search is enabled. The
+reader is vendored under `static/vendor/smgen-search`, so the published site has
+no runtime CDN dependency. `static/search.js` waits until the input is focused
+or receives a query before loading both the reader module and binary index.
+
+The generated input contains the local module and index locations:
 
 ```php
 <input id="search-query"
-       placeholder="search"
-       data-search-index="<?=getConf('BASE_URL');?>/search.bin"
-       data-search-results="#search-results" />
+	   type="search"
+	   data-search-index="<?=resolveAssetUrl('/search.bin')?>"
+	   data-search-reader="<?=resolveAssetUrl(getConf('SEARCH_READER'))?>"
+	   data-search-results="#search-results" />
 <ul class="search-menu" id="search-results"></ul>
-```
-
-Below is a browser example showing how to fetch and use the binary index with `SearchReader`:
-
-```html
-<script type="module">
-  import { SearchReader } from 'https://cdn.jsdelivr.net/npm/smgen-search/SearchReader.mjs';
-
-  (async function initSearch() {
-    const input = document.querySelector('#search-query');
-    const resultsList = document.querySelector(input.getAttribute('data-search-results'));
-    const baseUrl = document
-      .querySelector('meta[name="smgen-base-url"]')
-      .getAttribute('content');
-
-    // Load the prebuilt index
-    const resp = await fetch(input.getAttribute('data-search-index'));
-    const buffer = await resp.arrayBuffer();
-    const reader = new SearchReader(buffer);
-
-    input.addEventListener('input', () => {
-      const q = input.value.trim();
-      resultsList.innerHTML = '';
-      if (q.length < 3) return;
-
-      // Search threshold: lower values yield more results (0.0 = all)
-      const results = reader.search(q, 0.5);
-      if (!results.length) {
-        resultsList.innerHTML = '<li>No results.</li>';
-        return;
-      }
-
-      for (const [doc, score] of results) {
-        const li = document.createElement('li');
-        const a = document.createElement('a');
-        a.textContent = doc.title;
-        a.href = `${baseUrl}/${doc.path}.html`;
-        li.appendChild(a);
-        resultsList.appendChild(li);
-      }
-    });
-  })().catch(console.error);
-</script>
 ```
 
 ## 4. Build and test
@@ -101,6 +73,5 @@ smgen build
 
 Open your site in a browser and try typing in the search box in the header. Results will appear as you type.
 
-## Further reading
-
-For full details on building and querying the index, see the [smgen-search README](https://cdn.jsdelivr.net/npm/smgen-search/README.md).
+The reader source is distributed under Apache-2.0 with its attribution in
+`static/vendor/smgen-search/NOTICE`.

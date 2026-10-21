@@ -16,7 +16,6 @@ Bash-driven static-site generator that follows the Unix philosophy. Converts Mar
 - **PHP** (cli & php-yaml)
 - **yq** (YAML processor)
 - **Pandoc** (Markdown to HTML converter)
-- **uuid** (UUID generator)
 
 ### Recommended
 
@@ -25,7 +24,7 @@ Bash-driven static-site generator that follows the Unix philosophy. Converts Mar
 - **smgen-search** (Search index generator)
 
 ```bash
-apt install php php-yaml bash pandoc uuid inotify-tools
+apt install php php-yaml bash pandoc inotify-tools
 
 YQ_VERSION=v4.47.2
 wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64
@@ -40,7 +39,7 @@ To install `smgen` (the static site generator) system-wide and set up an update 
 curl -fsSL https://seanmorris.github.io/smgen/install.sh | sudo bash
 ```
 
-This command clones the repository into `/usr/share/smgen`, creates a `smgen` symlink in `/usr/local/bin`, and can be used to update `smgen` by re-running this script.
+This command clones the repository into `/usr/share/smgen`, creates a `smgen` symlink in `/usr/local/bin`, and can be used to update `smgen` by re-running this script. Updates are staged before the installed checkout is replaced, and the installer refuses to overwrite a non-Git directory at that path.
 
 ## Getting Started
 

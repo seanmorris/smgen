@@ -3,25 +3,27 @@
 		<header>
 			<div class = "row wide">
 				<nav>
-					<a class = "logo" href = "<?=resolveAssetUrl('/')?>">
-						<?php if(file_exists('static/logo.svg')): ?>
-						<img src = "<?=resolveAssetUrl('/logo.svg')?>" class = "logo-image">
+					<a class = "logo" href = "<?=escapeHtml(resolveAssetUrl('/'))?>">
+						<?php if(staticAssetExists('/logo.svg')): ?>
+						<img src="<?=escapeHtml(resolveAssetUrl('/logo.svg'))?>" class="logo-image" alt="" width="216" height="210">
 						<?php endif; ?>
 						<span class = "col">
 							<span class = "logo-text">
-								<?=getConf('PRODUCT_NAME') ?: 'Product Name';?>
+								<?=escapeHtml(getConf('PRODUCT_NAME') ?: 'Product Name');?>
 							</span>
 							<?php if(getConf('TAGLINE')): ?>
-							<span class = "tagline-text"><?=getConf('TAGLINE') ?: 'Tagline';?></span>
+							<span class = "tagline-text"><?=escapeHtml(getConf('TAGLINE') ?: 'Tagline');?></span>
 							<?php endif; ?>
 						</span>
 					</a>
 				</nav>
 				<div class = "header-fill">
+					<?php if((string) getConf('SEARCH_ENABLED') === '1'): ?>
 					<div class = "search-wrapper">
-						<input id = "search-query" placeholder = "search" data-search-index = "<?=resolveAssetUrl('/search.bin')?>" data-search-results = "#search-results" />
-						<ul class="search-menu" id = "search-results"></ul>
+						<input id="search-query" type="search" placeholder="search" aria-label="Search" aria-controls="search-results" autocomplete="off" data-search-index="<?=escapeHtml(resolveAssetUrl('/search.bin'))?>" data-search-reader="<?=escapeHtml(resolveAssetUrl(getConf('SEARCH_READER')))?>" data-search-results="#search-results" />
+						<ul class="search-menu" id="search-results" aria-live="polite"></ul>
 					</div>
+					<?php endif; ?>
 					<div class = "links"></div>
 				</div>
 			</div>

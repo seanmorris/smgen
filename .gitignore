@@ -3,3 +3,4 @@ test/
 test2/
 .env
 .agent-volumes
+.ci-debug/

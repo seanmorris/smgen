@@ -1,46 +1,49 @@
 <?php
 
-$domain = $argv[1];
-$rootPath = $argv[2];
+$baseUrl = rtrim((string) ($argv[1] ?? ''), '/');
+$manifestPath = $argv[3] ?? ($argv[2] ?? '');
 
-$directory = new \RecursiveIteratorIterator(
-	new \RecursiveDirectoryIterator($rootPath)
-);
+function xmlEscape($value)
+{
+	return htmlspecialchars((string) $value, ENT_XML1 | ENT_QUOTES, 'UTF-8');
+}
+
+function encodeUrlPath($path)
+{
+	return implode('/', array_map('rawurlencode', explode('/', str_replace(DIRECTORY_SEPARATOR, '/', $path))));
+}
+
+$pages = [];
+$manifest = fopen($manifestPath, 'r');
+if($manifest === false)
+{
+	throw new \RuntimeException('Unable to read page manifest: ' . $manifestPath);
+}
+
+while(($line = fgets($manifest)) !== false)
+{
+	$parts = explode("\t", rtrim($line, "\r\n"), 2);
+	if(count($parts) !== 2 || $parts[0] === '404.html')
+	{
+		continue;
+	}
+	$pages[] = ['output' => $parts[0], 'source' => $parts[1]];
+}
+fclose($manifest);
+usort($pages, fn($a, $b) => strcmp($a['output'], $b['output']));
 
 echo '<?xml version="1.0" encoding="UTF-8"?>' . PHP_EOL;
 echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . PHP_EOL;
-
-foreach($directory as $entry)
+foreach($pages as $page)
 {
-	$pathname = $entry->getPathname();
-	$filename = $entry->getFilename();
-
-	if(substr($pathname, -4) !== 'html' || substr($pathname, -8) === '404.html')
-	{
-		continue;
-	}
-
-	if(preg_match('/^google[0-9a-f].html$/', $filename))
-	{
-		continue;
-	}
-
-	$urlPath = substr($pathname, 1 + strlen($rootPath));
-
-	if($urlPath[0] === '.')
-	{
-		continue;
-	}
-
-	$escapedPathname = escapeshellarg($pathname);
-?>
-	<url>
-		<loc><?=$domain?>/<?=$urlPath?></loc>
-		<lastmod><?=trim(`date -r $escapedPathname +"%Y-%m-%d"`);?></lastmod>
+	$url = $baseUrl . '/' . encodeUrlPath($page['output']);
+	$modified = filemtime($page['source']);
+	?>	<url>
+		<loc><?=xmlEscape($url);?></loc>
+		<lastmod><?=gmdate('Y-m-d', $modified === false ? time() : $modified);?></lastmod>
 		<changefreq>daily</changefreq>
 		<priority>0.8</priority>
 	</url>
 <?php
 }
-
 echo '</urlset>' . PHP_EOL;

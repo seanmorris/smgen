@@ -6,11 +6,7 @@ title: macOS
 macOS uses `brew` for most installs; however, PHP may require some work (see below).
 
 ```bash
-brew install bash pandoc uuid
-
-YQ_VERSION=v4.47.2
-wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_darwin_amd64
-chmod +x /usr/local/bin/yq
+brew install bash pandoc yq
 ```
 
 ## Installing php-yaml on macOS

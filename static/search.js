@@ -1,94 +1,86 @@
-const loadSearcher = import('https://cdn.jsdelivr.net/npm/smgen-search/SearchReader.mjs');
+document.addEventListener('DOMContentLoaded', () => {
+	const input = document.querySelector('input#search-query');
+	if(!input) return;
 
-document.addEventListener('DOMContentLoaded', async () => {
-	const buffers = {};
-	const searchInput = document.querySelector('input#search-query');
+	const resultSelector = input.getAttribute('data-search-results') || '#search-results';
+	const resultsElement = document.querySelector(resultSelector);
+	const indexUrl = input.getAttribute('data-search-index');
+	const readerUrl = input.getAttribute('data-search-reader');
+	const baseUrl = document.querySelector('meta[name="smgen-base-url"]')?.content.replace(/\/$/, '') || '';
+	let readerPromise;
 
-	searchInput && searchInput.addEventListener('focus', event => {
-		const indexUrl = event.target.getAttribute('data-search-index');
-		if(!indexUrl)
+	const clearResults = () => {
+		resultsElement?.replaceChildren();
+	};
+
+	const showMessage = message => {
+		if(!resultsElement) return;
+		const item = document.createElement('li');
+		const label = document.createElement('span');
+		label.textContent = message;
+		item.append(label);
+		resultsElement.replaceChildren(item);
+	};
+
+	const loadReader = () => {
+		if(!readerPromise)
 		{
-			return;
+			readerPromise = Promise.all([
+				import(readerUrl),
+				fetch(indexUrl).then(response => {
+					if(!response.ok) throw new Error(`Search index returned ${response.status}.`);
+					return response.arrayBuffer();
+				}),
+			]).then(([module, buffer]) => new module.SearchReader(buffer));
 		}
-		else if(!buffers[indexUrl])
+		return readerPromise;
+	};
+
+	const runSearch = async () => {
+		const query = input.value.trim();
+		if(query.length < 3)
 		{
-			buffers[indexUrl] = fetch(indexUrl).then(r => r.arrayBuffer());
-		}
-	});
-
-	if(!searchInput)
-	{
-		return;
-	}
-
-	const baseUrl = document.querySelector('meta[name="smgen-base-url"]')?.getAttribute('content') ?? '';
-	const params = new URLSearchParams(location.search);
-	const query = params.get('q');
-	const { SearchReader } = await loadSearcher;
-
-	const onInput = async ({ target }) => {
-		const indexUrl = target.getAttribute('data-search-index') ?? baseUrl + '/search.bin';
-		const resultId = target.getAttribute('data-search-results') ?? '#search-results';
-		const resultsTag = document.querySelector(resultId);
-
-		if(!indexUrl)
-		{
-			return;
-		}
-		else if(!buffers[indexUrl])
-		{
-			buffers[indexUrl] = fetch(indexUrl).then(r => r.arrayBuffer());
-		}
-
-		const reader = new SearchReader(await buffers[indexUrl]);
-		const results = reader.search(target.value, 0.5);
-
-		if(!resultsTag)
-		{
-			throw new Error(`Results tag with selector "${resultId}" not found.`);
-		}
-
-		while(resultsTag.firstChild)
-		{
-			resultsTag.firstChild.remove();
-		}
-
-		if(target.value.length < 3)
-		{
+			clearResults();
 			return;
 		}
 
-		if(!results.length)
+		try
 		{
-			const li = document.createElement('li');
-			const a = document.createElement('a');
+			const reader = await loadReader();
+			const results = reader.search(query, 0.5);
+			if(!results.length)
+			{
+				showMessage('No results.');
+				return;
+			}
 
-			a.innerText = 'No results.';
-
-			li.append(a);
-			resultsTag.append(li);
-
-			return;
+			const items = results.map(([result]) => {
+				const item = document.createElement('li');
+				const link = document.createElement('a');
+				link.textContent = result.title;
+				link.href = `${baseUrl}/${String(result.path).replace(/^\//, '')}.html`;
+				item.append(link);
+				return item;
+			});
+			resultsElement?.replaceChildren(...items);
 		}
-
-		for(const [result] of results)
+		catch(error)
 		{
-			const li = document.createElement('li');
-			const a = document.createElement('a');
-
-			a.innerText = result.title;
-			a.href = baseUrl + '/' + result.path + '.html';
-
-			li.append(a);
-			resultsTag.append(li);
+			console.error('Unable to load search.', error);
+			showMessage('Search unavailable.');
 		}
 	};
 
-	searchInput.addEventListener('input', onInput);
+	if(indexUrl && readerUrl)
+	{
+		input.addEventListener('focus', () => { loadReader().catch(() => {}); }, { once: true });
+		input.addEventListener('input', runSearch);
+	}
 
+	const query = new URLSearchParams(location.search).get('q');
 	if(query)
 	{
-		searchInput.value = query;
-		onInput({ target: searchInput });
+		input.value = query;
+		runSearch();
 	}
 });

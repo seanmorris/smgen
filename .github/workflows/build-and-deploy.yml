@@ -1,78 +1,111 @@
-name: Build and Deploy
+name: Validate and Deploy
 
-on: push
+on:
+  pull_request:
+  push:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 jobs:
-  build:
-
-    runs-on: ubuntu-latest
+  validate:
+    name: Validate (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
 
     steps:
-      - name: Get GitHub Pages URL
-        id: get_pages_url
-        run: echo "BASE_URL=$(gh api "repos/$GITHUB_REPOSITORY/pages" --jq '.html_url | rtrimstr("/")')" >> $GITHUB_ENV
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - name: Install SMGen Search
-        run: npm i -g smgen-search
+      - name: Set up PHP
+        uses: shivammathur/setup-php@bf6b4fbd49ca58e4608c9c89fba0b8d90bd2a39f # 2.35.5
+        with:
+          php-version: '8.2'
+          extensions: yaml
+          coverage: none
 
-      - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y pandoc php-cli php-yaml uuid
-
-      - name: Install yq (Go binary)
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
         run: |
-          wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/${{ env.YQ_VERSION }}/yq_linux_amd64
-          chmod +x /usr/local/bin/yq
-        env:
-          YQ_VERSION: v4.47.2
+          sudo apt-get update
+          sudo apt-get install -y pandoc
+          curl -fsSL https://github.com/mikefarah/yq/releases/download/v4.47.2/yq_linux_amd64 -o /tmp/yq
+          echo '1bb99e1019e23de33c7e6afc23e93dad72aad6cf2cb03c797f068ea79814ddb0  /tmp/yq' | sha256sum -c -
+          sudo install -m 0755 /tmp/yq /usr/local/bin/yq
 
-      - name: Run test suite
-        run: |
-          mkdir -p .ci-debug
-          set -o pipefail
-          bash ./tests/run.sh 2>&1 | tee .ci-debug/test-suite.log
+      - name: Install macOS dependencies
+        if: runner.os == 'macOS'
+        run: brew install bash pandoc yq
 
-      - name: Clear files
-        run: rm -rf ./docs/*
+      - name: Install search indexer
+        run: npm install --global smgen-search@0.0.1
 
-      - name: Build site
+      - name: Run regression suite
+        run: bash ./tests/run.sh
+
+      - name: Build documentation
         run: ./smgen.sh build
 
       - name: Upload failure diagnostics
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: ci-debug-artifacts
+          name: validation-diagnostics-${{ matrix.os }}
           if-no-files-found: ignore
-          path: |
-            docs/**
-            .ci-debug/**
-            .smgen.yaml
-            .smgen-rc
-            .github/workflows/build-and-deploy.yml
-            tests/run.sh
+          path: .ci-debug/**
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
+  deploy:
+    name: Deploy GitHub Pages
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
 
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@bf6b4fbd49ca58e4608c9c89fba0b8d90bd2a39f # 2.35.5
         with:
-          path: './docs'
+          php-version: '8.2'
+          extensions: yaml
+          coverage: none
 
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
-
-      - name: Show GitHub Pages URL
+      - name: Install build dependencies
         run: |
-          echo "GitHub Pages URL: ${{ env.BASE_URL }}"
+          sudo apt-get update
+          sudo apt-get install -y pandoc
+          curl -fsSL https://github.com/mikefarah/yq/releases/download/v4.47.2/yq_linux_amd64 -o /tmp/yq
+          echo '1bb99e1019e23de33c7e6afc23e93dad72aad6cf2cb03c797f068ea79814ddb0  /tmp/yq' | sha256sum -c -
+          sudo install -m 0755 /tmp/yq /usr/local/bin/yq
+
+      - name: Configure Pages
+        id: pages
+        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
+
+      - name: Install search indexer
+        run: npm install --global smgen-search@0.0.1
+
+      - name: Build site
+        env:
+          BASE_URL: ${{ steps.pages.outputs.base_url }}
+        run: ./smgen.sh build
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
+        with:
+          path: ./docs
+
+      - name: Deploy Pages
+        id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4

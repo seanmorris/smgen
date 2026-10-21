@@ -1,7 +1,6 @@
 <?php
 
 const DEFAULTS = [
-	// Directories
 	'OUTPUT_DIR' => './docs',
 	'TEMPLATE_DIR' => './templates',
 	'STATIC_DIR' => './static',
@@ -10,95 +9,110 @@ const DEFAULTS = [
 	'INHERIT_CORE_STATIC' => 0,
 	'CORE_ASSETS' => [],
 	'DEV_PORT' => 8000,
-
-	// Commands
-	'PANDOC' => 'pandoc',
-	'SMG_SEARCH' => 'pandoc',
-
-	//
 	'BASE_URL' => '',
 	'PRODUCT_NAME' => '',
 	'ORGANIZATION' => '',
 	'TAGLINE' => '',
 	'TITLE_PREFIX' => '',
-
+	'DEFAULT_THEME' => 'theme-default',
 	'HEADER' => 'templates/header.php',
 	'FOOTER' => 'templates/footer.php',
-
 	'STYLES' => [],
 	'INLINE_STYLES' => [],
-
 	'SCRIPTS' => [],
+	'DEFER_SCRIPTS' => [],
 	'BODY_SCRIPTS' => [],
 	'INLINE_SCRIPTS' => [],
 	'INLINE_BODY_SCRIPTS' => [],
-
-	'HIGHLIGHT_STYLE' => '',
+	'HIGHLIGHT_STYLE' => 'zenburn',
+	'SEARCH_ENABLED' => 0,
+	'SEARCH_READER' => '/vendor/smgen-search/SearchReader.mjs',
+	'SMG_SEARCH' => 'smgen-search',
 ];
 
 const LIST_CONFIG_KEYS = [
 	'STYLES',
 	'INLINE_STYLES',
 	'SCRIPTS',
+	'DEFER_SCRIPTS',
 	'BODY_SCRIPTS',
 	'INLINE_SCRIPTS',
 	'INLINE_BODY_SCRIPTS',
 	'CORE_ASSETS',
 ];
 
-function normalizeConfigValue($name, $val)
+function normalizeConfigValue($name, $value)
 {
 	if(in_array($name, LIST_CONFIG_KEYS, true))
 	{
-		if(is_array($val))
+		if(is_array($value))
 		{
-			return $val;
+			return $value;
 		}
 
-		$val = rtrim((string) $val);
-
-		if($val === '')
-		{
-			return [];
-		}
-
-		return explode("\n", $val);
+		$value = rtrim((string) $value);
+		return $value === '' ? [] : explode("\n", $value);
 	}
 
-	if(is_string($val))
+	return is_string($value) ? rtrim($value) : $value;
+}
+
+function readYamlConfig($path)
+{
+	if(!is_file($path))
 	{
-		return rtrim($val);
+		return [];
 	}
 
-	return $val;
+	$value = yaml_parse_file($path);
+	if($value === false || $value === null)
+	{
+		return [];
+	}
+
+	if(!is_array($value))
+	{
+		throw new \RuntimeException('Configuration must be a YAML mapping: ' . $path);
+	}
+
+	return $value;
 }
 
 function getConf($name)
 {
-	static $config;
-	static $envConfig;
+	static $loaded = false;
+	static $config = [];
+	static $environmentConfig = [];
 
-	if(!$config && file_exists('./.smgen.yaml'))
+	if(!$loaded)
 	{
-		$config = $config ?? yaml_parse_file('./.smgen.yaml');
-	}
-	else
-	{
-		$config = $config ?? [];
+		$config = readYamlConfig('./.smgen.yaml');
+		$environment = getenv('SMGEN_ENVIRONMENT');
+		if($environment === false || $environment === '')
+		{
+			$environment = getenv('environment');
+		}
+
+		if($environment !== false && $environment !== '')
+		{
+			if(!preg_match('/^[A-Za-z0-9._-]+$/', $environment))
+			{
+				throw new \RuntimeException('Invalid SMGEN_ENVIRONMENT: ' . $environment);
+			}
+			$environmentConfig = readYamlConfig('./.smgen.' . $environment . '.yaml');
+		}
+		$loaded = true;
 	}
 
-	if(!$envConfig && array_key_exists('environment', $_ENV) && file_exists('./.smgen.' . $_ENV['environment'] . '.yaml'))
+	$environmentValue = getenv($name);
+	if($environmentValue !== false)
 	{
-		$envConfig = yaml_parse_file('./.smgen.' . $_ENV['environment'] . '.yaml');
-	}
-	else
-	{
-		$envConfig = $envConfig ?? [];
+		return normalizeConfigValue($name, $environmentValue);
 	}
 
-	if(array_key_exists($name, $envConfig))
+	if(array_key_exists($name, $environmentConfig))
 	{
-		return normalizeConfigValue($name, $envConfig[$name]);
+		return normalizeConfigValue($name, $environmentConfig[$name]);
 	}
 
 	if(array_key_exists($name, $config))
@@ -106,21 +120,5 @@ function getConf($name)
 		return normalizeConfigValue($name, $config[$name]);
 	}
 
-	if(array_key_exists($name, $_ENV))
-	{
-		return normalizeConfigValue($name, $_ENV[$name]);
-	}
-
-	$envVal = getenv($name);
-	if($envVal !== false)
-	{
-		return normalizeConfigValue($name, $envVal);
-	}
-
-	if(array_key_exists($name, DEFAULTS))
-	{
-		return DEFAULTS[$name];
-	}
-
-	return NULL;
+	return array_key_exists($name, DEFAULTS) ? DEFAULTS[$name] : null;
 }

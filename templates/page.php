@@ -3,11 +3,10 @@
 $headerTemplate = resolveTemplateInclude($frontmatter['header'] ?? getConf('HEADER') ?? 'templates/header.php');
 $footerTemplate = resolveTemplateInclude($frontmatter['footer'] ?? getConf('FOOTER') ?? 'templates/footer.php');
 
-$leftBarLink = $frontmatter['leftBarLink'] ?? TRUE;
-$leftBarShow = $frontmatter['leftBarShow'] ?? TRUE;
+$leftBarShow = $frontmatter['leftBarShow'] ?? true;
 
 ?><!DOCTYPE HTML>
-<html lang = "en" class = "<?=getConf('DEFAULT_THEME')??'theme-default';?>">
+<html lang="en" class="<?=escapeHtml(getConf('DEFAULT_THEME') ?: 'theme-default');?>">
 <head>
 	$if(noprefix)$
 	<title>$if(pagetitle)$${pagetitle}$else$${title}$endif$</title>
@@ -19,8 +18,8 @@ $leftBarShow = $frontmatter['leftBarShow'] ?? TRUE;
 	$endif$
 	$endif$
 	<meta charset="utf-8" />
-	<meta name="viewport" content="width=800, user-scalable=yes" />
-	<meta name="smgen-base-url" content="<?=getConf('BASE_URL');?>" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<meta name="smgen-base-url" content="<?=escapeHtml(getConf('BASE_URL'));?>" />
 $for(author)$
 	<meta name="author" content="$author.name$" />
 $endfor$
@@ -37,12 +36,12 @@ $if(canonical)$
 	<link rel="canonical" href="$canonical$" />
 $endif$
 	<meta name="title" content="$if(pagetitle)$${pagetitle}$else$${title}$endif$">
-	<meta name="generated-at" content="<?=date('Y-m-d_h:i:s')?>">
-	<link rel="icon" type="image/png" href="<?=resolveAssetUrl('/icon-16.png')?>">
-	<link rel="sitemap" href="<?=resolveAssetUrl('/sitemap.xml')?>" />
-<?php if(file_exists('static/logo.svg')): ?>
-	<link rel="preload" href="<?=resolveAssetUrl('/logo.svg')?>" as="image" type="image/svg">
+	<link rel="icon" type="image/png" href="<?=escapeHtml(resolveAssetUrl('/icon-16.png'))?>">
+	<link rel="sitemap" href="<?=escapeHtml(resolveAssetUrl('/sitemap.xml'))?>" />
+<?php if(staticAssetExists('/logo.svg')): ?>
+	<link rel="preload" href="<?=escapeHtml(resolveAssetUrl('/logo.svg'))?>" as="image" type="image/svg">
 <?php endif; ?>
+	<script>(function(d){try{var v=sessionStorage.getItem('current-theme-variant');if(!v)v=matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';d.classList.add(v)}catch(e){d.classList.add('dark')}})(document.documentElement)</script>
 	<style>
 		$styles.html()$
 	</style>
@@ -58,7 +57,10 @@ $if(math)$
 	$math$
 $endif$
 <?php if(getConf('SCRIPTS')) foreach(getConf('SCRIPTS') as $javascript):?>
-	<script src = "<?=resolveAssetUrl($javascript)?>"></script>
+	<script src="<?=escapeHtml(resolveAssetUrl($javascript))?>"></script>
+<?php endforeach; ?>
+<?php if(getConf('DEFER_SCRIPTS')) foreach(getConf('DEFER_SCRIPTS') as $javascript):?>
+	<script defer src="<?=escapeHtml(resolveAssetUrl($javascript))?>"></script>
 <?php endforeach; ?>
 <?php if(getConf('INLINE_SCRIPTS')) foreach(getConf('INLINE_SCRIPTS') as $javascriptFile):?>
 	<script><?=file_get_contents($javascriptFile);?></script>
@@ -68,7 +70,7 @@ $endif$
 	<?php include $headerTemplate; ?>
 	<section class = "below-fold">
 		<div class = "page-rule row">
-			<?php if($leftBarShow ?? true): ?>
+			<?php if($leftBarShow): ?>
 				<nav class = "main"><?php renderNavBar(); ?></nav>
 			<?php endif; ?>
 			<div class = "page-content">
@@ -90,10 +92,10 @@ $endif$
 	</section>
 	<?php include $footerTemplate; ?>
 <?php if(getConf('BODY_SCRIPTS')) foreach(getConf('BODY_SCRIPTS') as $javascript):?>
-	<script src = "<?=resolveAssetUrl($javascript)?>"></script>
+	<script src="<?=escapeHtml(resolveAssetUrl($javascript))?>"></script>
 <?php endforeach; ?>
 <?php if(getConf('INLINE_BODY_SCRIPTS')) foreach(getConf('INLINE_BODY_SCRIPTS') as $javascriptFile):?>
 	<script><?=file_get_contents($javascriptFile);?></script>
 <?php endforeach; ?>
-	</body>
+</body>
 </html>

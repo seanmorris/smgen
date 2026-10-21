@@ -42,6 +42,15 @@ END
 
 These will insert `<link rel="stylesheet" href="/example.css">` and `<script src="/example.js"></script>` in the document `<head>`.
 
+`SCRIPTS` preserves blocking script behavior for compatibility. Prefer `DEFER_SCRIPTS` for scripts that do not need to block HTML parsing:
+
+```bash
+DEFER_SCRIPTS=$(cat <<-END
+    /example.js
+END
+)
+```
+
 To inline files directly in the HTML rather than referencing them, use `INLINE_STYLES` and `INLINE_SCRIPTS`:
 
 ```bash
@@ -79,7 +88,7 @@ STYLES=$(cat <<-END
 END
 )
 
-SCRIPTS=$(cat <<-END
+DEFER_SCRIPTS=$(cat <<-END
     /main.js
 END
 )

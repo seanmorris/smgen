@@ -14,14 +14,16 @@ STATIC_DIR: ./static
 
 STYLES:
   - /default.css
-  - /techno.css
   - /cosmic.css
 
-SCRIPTS:
+DEFER_SCRIPTS:
   - /main.js
   - /nav-state.js
   - /search.js
   - /theme-variant.js
+
+SEARCH_ENABLED: 1
+SEARCH_READER: /vendor/smgen-search/SearchReader.mjs
 
 ICONS:
   - class: github-icon

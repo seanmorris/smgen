@@ -1,3 +1,7 @@
+---
+title: Linux
+---
+
 # Linux Specific Stuff
 
 ## Debian
@@ -5,7 +9,7 @@
 Installing the dependencies on Debian and derivatives is simple. All but `yq` are available from the default repositories:
 
 ```bash
-apt install php php-yaml bash pandoc uuid inotify-tools
+apt install php php-yaml bash pandoc inotify-tools
 
 YQ_VERSION=v4.47.2
 wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64
@@ -17,7 +21,7 @@ chmod +x /usr/local/bin/yq
 Installing the dependencies on Fedora and related distributions is straightforward:
 
 ```bash
-dnf install php php-yaml bash pandoc uuid inotify-tools
+dnf install php php-yaml bash pandoc inotify-tools
 
 YQ_VERSION=v4.47.2
 wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64
@@ -42,7 +46,7 @@ Install the equivalent packages using your distribution's package manager and in
 
 ```bash
 # Replace <pkg-manager> with your distro's package manager (e.g., apt, yum, zypper, apk).
-<pkg-manager> install php php-yaml bash pandoc uuid inotify-tools
+<pkg-manager> install php php-yaml bash pandoc inotify-tools
 
 YQ_VERSION=v4.47.2
 wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64

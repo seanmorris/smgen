@@ -35,7 +35,6 @@ Required for `smgen build`:
 - **PHP YAML extension** (`php-yaml`)
 - **yq** (YAML processor)
 - **Pandoc** (Markdown to HTML converter)
-- **uuid** (UUID generator)
 
 Optional:
 
@@ -46,7 +45,7 @@ Optional:
 Example install on Debian/Ubuntu:
 
 ```bash
-apt install php php-yaml bash pandoc uuid inotify-tools aspell
+apt install php php-yaml bash pandoc inotify-tools aspell
 
 YQ_VERSION=v4.47.2
 wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64
@@ -61,7 +60,7 @@ To install `smgen` system-wide and set up an update path, run:
 curl -fsSL https://seanmorris.github.io/smgen/install.sh | sudo bash
 ```
 
-This clones the repository into `/usr/share/smgen`, creates a `smgen` symlink in `/usr/local/bin`, and can be used again later to update the installation.
+This clones the repository into `/usr/share/smgen`, creates a `smgen` symlink in `/usr/local/bin`, and can be used again later to update the installation. Updates download into a staging directory and replace the installed checkout only after the clone succeeds. The installer refuses to overwrite an existing non-Git directory at that path.
 
 ## Quickstart
 
@@ -110,7 +109,7 @@ docs/       # Generated output (default)
 
 ```text
 smgen init       Initialize a new site in the current directory
-smgen build      Build Markdown pages into HTML
+smgen build      Atomically rebuild the complete site
 smgen watch      Build, serve, and rebuild on filesystem changes
 smgen serve      Serve the generated output locally
 smgen proofread  Spell-check one page or all pages with aspell
@@ -126,12 +125,21 @@ SMGen reads configuration from the current working directory. The main inputs ar
 - `.env`
 - page frontmatter
 
+Configuration precedence, from lowest to highest, is:
+
+1. built-in defaults
+2. `.smgen.yaml`
+3. `.smgen.<environment>.yaml`, selected with `SMGEN_ENVIRONMENT`
+4. `.smgen-rc`
+5. `.env`
+6. variables supplied by the calling environment
+
 In practice:
 
 - use `.smgen.yaml` for fixed, declarative values
 - use `.smgen-rc` when values need shell expansion, derived URLs, conditionals, or other runtime logic
 - use `.env` for local environment-specific overrides
-- if the same variable is defined in multiple sources, later-loaded shell config wins over earlier YAML config
+- use `.smgen.<environment>.yaml` for named deployment settings
 
 Common settings:
 
@@ -147,12 +155,15 @@ Common settings:
 - `ORGANIZATION` — organization name used in the footer
 - `HIGHLIGHT_STYLE` — Pandoc syntax highlighting theme
 - `SMG_SEARCH` — search index generator command
+- `SEARCH_ENABLED` — `auto`, `1`, or `0` (default `auto`)
+- `SEARCH_READER` — local browser reader module path
 
 Assets can be configured as newline-separated lists:
 
 - `STYLES`
 - `INLINE_STYLES`
 - `SCRIPTS` for `<head>` script tags
+- `DEFER_SCRIPTS` for non-blocking `<head>` script tags
 - `INLINE_SCRIPTS` for inline `<head>` scripts
 - `BODY_SCRIPTS`
 - `INLINE_BODY_SCRIPTS`
@@ -174,7 +185,7 @@ HIGHLIGHT_STYLE: zenburn
 STYLES:
   - http://localhost:8000/default.css
   - http://localhost:8000/cosmic.css
-SCRIPTS:
+DEFER_SCRIPTS:
   - http://localhost:8000/main.js
 ```
 
@@ -197,7 +208,7 @@ STYLES=$( cat <<-END
 END
 )
 
-SCRIPTS=$( cat <<-END
+DEFER_SCRIPTS=$( cat <<-END
 	${BASE_URL}/main.js
 END
 )
@@ -231,9 +242,11 @@ Available options:
 
 ## Search Index
 
-If `smgen-search` is installed and available on `PATH`, `smgen build` will generate `search.bin` from your page sources. If it is not installed, the rest of the build still completes.
+With `SEARCH_ENABLED=auto`, SMGen enables search when `smgen-search` is on `PATH` or `static/search.bin` already exists. Set `SEARCH_ENABLED=1` to require a usable index, or `0` to omit the search UI. When the CLI is available, every build regenerates `search.bin` from the page sources.
 
 If you install it locally instead of globally, point `SMG_SEARCH` at the executable, for example `./node_modules/.bin/smgen-search`.
+
+The browser reader is served from `static/vendor/smgen-search`; it and the index load only when a visitor focuses or uses search.
 
 ## Testing
 
@@ -243,7 +256,7 @@ Run the CLI end-to-end test suite with:
 bash ./tests/run.sh
 ```
 
-The suite covers the core build flow, custom output directories, sitemap generation, and static asset output paths.
+The suite covers configuration precedence, frontmatter, complete output replacement, failed-build rollback, hooks, custom directories, path safety, sitemap generation, navigation escaping, static assets, and search loading.
 
 ## Contributing
 
@@ -261,6 +274,12 @@ If you are changing templates, asset handling, or config behavior, verify both t
 - `smgen watch` currently relies on Linux `inotify-tools`
 - `smgen proofread` requires `aspell`
 - search index generation requires `smgen-search`
+
+## Build Guarantees
+
+Each build renders the entire site in a temporary sibling directory and replaces `OUTPUT_DIR` only after generation succeeds. This removes stale files and keeps the last successful output when rendering or an after-build hook fails. `smgen build <path>` validates the path but still performs a complete rebuild so navigation, sitemap, and cross-page metadata remain correct.
+
+Treat `OUTPUT_DIR` as generated content: a successful build replaces it completely. Keep authored files in `pages/`, `static/`, or another source directory.
 
 ## Documentation Source
 

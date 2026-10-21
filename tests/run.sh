@@ -7,9 +7,22 @@ SMGEN="${ROOT_DIR}/smgen.sh"
 DEBUG_DIR="${SMGEN_TEST_DEBUG_DIR:-${ROOT_DIR}/.ci-debug}"
 CURRENT_TEST=""
 CURRENT_SITE=""
+TEMP_ROOT="$(mktemp -d)"
+DEBUG_ENTRIES=()
 
-rm -rf "${DEBUG_DIR}"
+trap 'rm -rf -- "${TEMP_ROOT}"' EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
 mkdir -p "${DEBUG_DIR}"
+if [ "$(cd "${DEBUG_DIR}" && pwd -P)" = "${ROOT_DIR}" ] || [ "$(cd "${DEBUG_DIR}" && pwd -P)" = "/" ]; then
+	echo "Unsafe SMGEN_TEST_DEBUG_DIR: ${DEBUG_DIR}" >&2
+	exit 1
+fi
+shopt -s dotglob nullglob
+DEBUG_ENTRIES=("${DEBUG_DIR}"/*)
+shopt -u dotglob nullglob
+[ "${#DEBUG_ENTRIES[@]}" -eq 0 ] || rm -rf -- "${DEBUG_ENTRIES[@]}"
 
 collect_debug()
 {
@@ -26,9 +39,6 @@ collect_debug()
 		echo "test=${CURRENT_TEST}"
 		echo "site=${CURRENT_SITE}"
 		echo "pwd=$(pwd)"
-		echo "BASE_URL=${BASE_URL:-}"
-		echo "GITHUB_ENV=${GITHUB_ENV:-}"
-		env | sort
 	} > "${target_dir}/env.txt"
 
 	if [[ -n "${CURRENT_SITE}" && -d "${CURRENT_SITE}" ]]; then
@@ -56,6 +66,12 @@ assert_file_exists()
 	[[ -f "${file}" ]] || fail "expected file to exist: ${file}"
 }
 
+assert_directory_exists()
+{
+	local directory="$1"
+	[[ -d "${directory}" ]] || fail "expected directory to exist: ${directory}"
+}
+
 assert_file_missing()
 {
 	local file="$1"
@@ -69,6 +85,15 @@ assert_file_contains()
 	grep -Fq -- "${pattern}" "${file}" || fail "expected ${file} to contain: ${pattern}"
 }
 
+assert_file_excludes()
+{
+	local file="$1"
+	local pattern="$2"
+	if grep -Fq -- "${pattern}" "${file}"; then
+		fail "expected ${file} to exclude: ${pattern}"
+	fi
+}
+
 begin_test()
 {
 	CURRENT_TEST="$1"
@@ -78,13 +103,46 @@ begin_test()
 make_temp_site()
 {
 	local temp_dir
-	temp_dir="$(mktemp -d)"
+	temp_dir="$(mktemp -d "${TEMP_ROOT}/site.XXXXXX")"
 	mkdir -p "${temp_dir}/docs" "${temp_dir}/pages" "${temp_dir}/static" "${temp_dir}/templates"
 	cp "${ROOT_DIR}/templates/"*.php "${temp_dir}/templates/"
-	cp "${ROOT_DIR}/static/"* "${temp_dir}/static/"
+	cp -Rp "${ROOT_DIR}/static/." "${temp_dir}/static/"
 	cp "${ROOT_DIR}/.smgen-rc-default" "${temp_dir}/.smgen-rc"
 	printf '%s\n' '---' 'title: Home' '---' '' '# Hello' > "${temp_dir}/pages/index.md"
 	echo "${temp_dir}"
+}
+
+test_init_creates_a_buildable_project()
+{
+	begin_test "init-project"
+	local site fake_bin
+	site="$(mktemp -d "${TEMP_ROOT}/site.XXXXXX")"
+	CURRENT_SITE="${site}"
+	fake_bin="${TEMP_ROOT}/fake-bin"
+	mkdir -p "${fake_bin}"
+	cat > "${fake_bin}/curl" <<'EOF'
+#!/usr/bin/env bash
+while [ "$#" -gt 0 ]; do
+	if [ "$1" = "-o" ]; then
+		printf '%s\n' '---' 'title: Home' '---' '' '# Initialized' > "$2"
+		exit 0
+	fi
+	shift
+done
+exit 1
+EOF
+	chmod +x "${fake_bin}/curl"
+
+	(
+		cd "${site}"
+		PATH="${fake_bin}:${PATH}" OUTPUT_DIR=./public "${SMGEN}" init > "${DEBUG_DIR}/${CURRENT_TEST}-init.log" 2>&1
+		OUTPUT_DIR=./public "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-build.log" 2>&1
+	)
+
+	assert_directory_exists "${site}/public"
+	assert_file_exists "${site}/public/index.html"
+	assert_file_exists "${site}/static/vendor/smgen-search/SearchReader.mjs"
+	assert_file_contains "${site}/public/index.html" 'Initialized'
 }
 
 test_default_build_generates_expected_output()
@@ -160,7 +218,7 @@ test_env_base_url_overrides_localhost_defaults()
 
 	assert_file_contains "${site}/docs/index.html" 'content="https://seanmorris.github.io/smgen"'
 	assert_file_contains "${site}/docs/index.html" 'href="https://seanmorris.github.io/smgen/icon-16.png"'
-	assert_file_contains "${site}/docs/index.html" 'href = "https://seanmorris.github.io/smgen/index.html"'
+	assert_file_contains "${site}/docs/index.html" 'href="https://seanmorris.github.io/smgen/index.html"'
 	assert_file_contains "${site}/docs/sitemap.xml" '<loc>https://seanmorris.github.io/smgen/index.html</loc>'
 }
 
@@ -193,7 +251,7 @@ test_page_template_cannot_escape_template_dir()
 	CURRENT_SITE="${site}"
 
 	cat > "${site}/evil.php" <<'EOF'
-<?php file_put_contents('/tmp/smgen-template-escape.txt', 'executed'); ?>
+<?php file_put_contents(__DIR__ . '/template-escape-executed.txt', 'executed'); ?>
 EOF
 
 	cat > "${site}/pages/index.md" <<EOF
@@ -205,14 +263,12 @@ template: ${site}/evil.php
 # Hello
 EOF
 
-	rm -f /tmp/smgen-template-escape.txt
-
 	(
 		cd "${site}"
 		assert_command_fails "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}.log" 2>&1
 	)
 
-	assert_file_missing /tmp/smgen-template-escape.txt
+	assert_file_missing "${site}/template-escape-executed.txt"
 }
 
 test_project_helpers_override_core_helpers()
@@ -343,6 +399,255 @@ EOF
 	assert_file_missing "${site}/docs/search.svg"
 }
 
+test_yaml_lists_and_environment_precedence()
+{
+	begin_test "yaml-precedence"
+	local site
+	site="$(make_temp_site)"
+	CURRENT_SITE="${site}"
+	rm "${site}/.smgen-rc"
+	printf '%s\n' 'console.log("blocking")' > "${site}/static/blocking.js"
+
+	cat > "${site}/.smgen.yaml" <<'EOF'
+OUTPUT_DIR: ./public
+PRODUCT_NAME: YAML product
+SEARCH_ENABLED: 0
+STYLES:
+  - /default.css
+SCRIPTS:
+  - /blocking.js
+DEFER_SCRIPTS:
+  - /main.js
+EOF
+	cat > "${site}/.smgen.production.yaml" <<'EOF'
+PRODUCT_NAME: Production product
+EOF
+
+	(
+		cd "${site}"
+		SMGEN_ENVIRONMENT=production PRODUCT_NAME="Caller product" BASE_URL="https://example.test/docs" \
+			"${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}.log" 2>&1
+	)
+
+	assert_file_exists "${site}/public/index.html"
+	assert_file_contains "${site}/public/index.html" 'Caller product'
+	assert_file_contains "${site}/public/index.html" '<script src="https://example.test/docs/blocking.js"></script>'
+	assert_file_contains "${site}/public/index.html" '<script defer src="https://example.test/docs/main.js"></script>'
+	assert_file_contains "${site}/public/index.html" 'href="https://example.test/docs/default.css"'
+}
+
+test_frontmatter_controls_templates_navigation_and_toc()
+{
+	begin_test "frontmatter-controls"
+	local site
+	site="$(make_temp_site)"
+	CURRENT_SITE="${site}"
+	cat > "${site}/templates/minimal-header.php" <<'EOF'
+<header id="custom-header">Header</header>
+EOF
+	cat > "${site}/templates/minimal-footer.php" <<'EOF'
+<footer id="custom-footer">Footer</footer>
+EOF
+	printf '%b' '---\r\ntitle: Frontmatter\r\nheader: templates/minimal-header.php\r\nfooter: templates/minimal-footer.php\r\nleftBarShow: false\r\nTOC: false\r\n---\r\n\r\n# Heading\r\n' > "${site}/pages/index.md"
+
+	(
+		cd "${site}"
+		"${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}.log" 2>&1
+	)
+
+	assert_file_contains "${site}/docs/index.html" 'id="custom-header"'
+	assert_file_contains "${site}/docs/index.html" 'id="custom-footer"'
+	assert_file_excludes "${site}/docs/index.html" '<nav class = "main">'
+	assert_file_excludes "${site}/docs/index.html" 'class = "table-of-contents"'
+}
+
+test_successful_build_replaces_the_complete_output()
+{
+	begin_test "replace-output"
+	local site
+	site="$(make_temp_site)"
+	CURRENT_SITE="${site}"
+	printf '%s\n' stale > "${site}/docs/stale.txt"
+
+	(
+		cd "${site}"
+		"${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}.log" 2>&1
+	)
+
+	assert_file_missing "${site}/docs/stale.txt"
+	assert_file_exists "${site}/docs/index.html"
+}
+
+test_failed_build_preserves_previous_output()
+{
+	begin_test "failed-build-rollback"
+	local site
+	site="$(make_temp_site)"
+	CURRENT_SITE="${site}"
+	(
+		cd "${site}"
+		"${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-first.log" 2>&1
+	)
+	assert_file_contains "${site}/docs/index.html" '<h1 id="hello">Hello</h1>'
+
+	cat > "${site}/pages/index.md" <<'EOF'
+---
+title: Broken
+template: ../outside.php
+---
+
+# Replacement
+EOF
+	(
+		cd "${site}"
+		assert_command_fails "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}.log" 2>&1
+	)
+
+	assert_file_contains "${site}/docs/index.html" '<h1 id="hello">Hello</h1>'
+	assert_file_excludes "${site}/docs/index.html" 'Replacement'
+}
+
+test_page_argument_still_rebuilds_the_complete_site()
+{
+	begin_test "page-argument-full-build"
+	local site
+	site="$(make_temp_site)"
+	CURRENT_SITE="${site}"
+	printf '%s\n' '---' 'title: Second' '---' '' '# Initial second' > "${site}/pages/second.md"
+	(
+		cd "${site}"
+		"${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-first.log" 2>&1
+	)
+	printf '%s\n' '---' 'title: Home' '---' '' '# Updated home' > "${site}/pages/index.md"
+	printf '%s\n' '---' 'title: Second' '---' '' '# Updated second' > "${site}/pages/second.md"
+
+	(
+		cd "${site}"
+		"${SMGEN}" build pages/index.md > "${DEBUG_DIR}/${CURRENT_TEST}-relative.log" 2>&1
+		"${SMGEN}" build "${site}/pages/second.md" > "${DEBUG_DIR}/${CURRENT_TEST}-absolute.log" 2>&1
+	)
+
+	assert_file_contains "${site}/docs/index.html" 'Updated home'
+	assert_file_contains "${site}/docs/second.html" 'Updated second'
+	assert_file_missing "${site}/docs/pages/index.html"
+}
+
+test_hooks_run_and_after_failure_rolls_back()
+{
+	begin_test "hooks-and-rollback"
+	local site
+	site="$(make_temp_site)"
+	CURRENT_SITE="${site}"
+	cat > "${site}/before-smgen.sh" <<'EOF'
+printf 'before\n' >> hook.log
+EOF
+	cat > "${site}/after-smgen.sh" <<'EOF'
+test -f docs/index.html
+printf 'after\n' >> hook.log
+EOF
+	(
+		cd "${site}"
+		"${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-first.log" 2>&1
+	)
+	assert_file_contains "${site}/hook.log" 'before'
+	assert_file_contains "${site}/hook.log" 'after'
+
+	printf '%s\n' '---' 'title: Home' '---' '' '# Replacement' > "${site}/pages/index.md"
+	cat > "${site}/after-smgen.sh" <<'EOF'
+exit 7
+EOF
+	(
+		cd "${site}"
+		assert_command_fails "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-failure.log" 2>&1
+	)
+	assert_file_contains "${site}/docs/index.html" '<h1 id="hello">Hello</h1>'
+	assert_file_excludes "${site}/docs/index.html" 'Replacement'
+}
+
+test_custom_template_directory_is_supported()
+{
+	begin_test "custom-template-directory"
+	local site
+	site="$(make_temp_site)"
+	CURRENT_SITE="${site}"
+	mv "${site}/templates" "${site}/views"
+	cat > "${site}/.smgen-rc" <<'EOF'
+BASE_URL=${BASE_URL:-http://localhost:8000}
+TEMPLATE_DIR=./views
+HEADER=views/header.php
+FOOTER=views/footer.php
+SEARCH_ENABLED=0
+EOF
+	(
+		cd "${site}"
+		"${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}.log" 2>&1
+	)
+	assert_file_exists "${site}/docs/index.html"
+	assert_file_contains "${site}/docs/index.html" '<!DOCTYPE HTML>'
+}
+
+test_unsafe_output_and_core_asset_paths_are_rejected()
+{
+	begin_test "unsafe-paths"
+	local site
+	site="$(make_temp_site)"
+	CURRENT_SITE="${site}"
+	(
+		cd "${site}"
+		assert_command_fails env OUTPUT_DIR=./pages "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-output.log" 2>&1
+		assert_command_fails env OUTPUT_DIR=./pages/generated "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-nested-output.log" 2>&1
+		assert_command_fails env CORE_ASSETS=../main.js "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-asset.log" 2>&1
+	)
+	assert_file_exists "${site}/pages/index.md"
+}
+
+test_search_is_optional_local_and_lazy()
+{
+	begin_test "search-loading"
+	local site
+	site="$(make_temp_site)"
+	CURRENT_SITE="${site}"
+	(
+		cd "${site}"
+		"${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-disabled.log" 2>&1
+	)
+	assert_file_excludes "${site}/docs/index.html" 'id="search-query"'
+	assert_file_excludes "${ROOT_DIR}/static/search.js" 'cdn.jsdelivr.net'
+	assert_file_contains "${ROOT_DIR}/static/search.js" 'import(readerUrl)'
+
+	printf 'SRCH' > "${site}/static/search.bin"
+	rm -rf "${site}/static/vendor"
+	(
+		cd "${site}"
+		SEARCH_ENABLED=1 "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-enabled.log" 2>&1
+	)
+	assert_file_contains "${site}/docs/index.html" 'id="search-query"'
+	assert_file_contains "${site}/docs/index.html" 'data-search-reader="http://localhost:8000/vendor/smgen-search/SearchReader.mjs"'
+	assert_file_exists "${site}/docs/vendor/smgen-search/SearchReader.mjs"
+}
+
+test_sitemap_encodes_paths_and_navigation_escapes_titles()
+{
+	begin_test "escaped-output"
+	local site
+	site="$(make_temp_site)"
+	CURRENT_SITE="${site}"
+	cat > "${site}/pages/a page.md" <<'EOF'
+---
+title: "<script>alert(1)</script>"
+---
+
+# Safe
+EOF
+	(
+		cd "${site}"
+		BASE_URL=https://example.test "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}.log" 2>&1
+	)
+	assert_file_contains "${site}/docs/sitemap.xml" 'https://example.test/a%20page.html'
+	assert_file_contains "${site}/docs/index.html" '&lt;script&gt;alert(1)&lt;/script&gt;'
+	assert_file_excludes "${site}/docs/index.html" '<script>alert(1)</script>'
+}
+
 test_external_links_use_noopener()
 {
 	begin_test "external-links-noopener"
@@ -351,6 +656,7 @@ test_external_links_use_noopener()
 
 main()
 {
+	test_init_creates_a_buildable_project
 	test_default_build_generates_expected_output
 	test_custom_output_dir_builds_and_links_sitemap
 	test_env_base_url_overrides_localhost_defaults
@@ -359,6 +665,16 @@ main()
 	test_project_helpers_override_core_helpers
 	test_project_can_inherit_core_static_assets
 	test_project_can_select_specific_core_assets
+	test_yaml_lists_and_environment_precedence
+	test_frontmatter_controls_templates_navigation_and_toc
+	test_successful_build_replaces_the_complete_output
+	test_failed_build_preserves_previous_output
+	test_page_argument_still_rebuilds_the_complete_site
+	test_hooks_run_and_after_failure_rolls_back
+	test_custom_template_directory_is_supported
+	test_unsafe_output_and_core_asset_paths_are_rejected
+	test_search_is_optional_local_and_lazy
+	test_sitemap_encodes_paths_and_navigation_escapes_titles
 	test_external_links_use_noopener
 
 	echo "PASS: all tests"

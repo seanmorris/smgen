@@ -56,11 +56,15 @@ smgen build
 smgen build <file>
 ```
 
+Both forms rebuild the complete site. The optional path is validated as a page source, but SMGen still refreshes navigation, sitemap data, and every output page. The completed build replaces the output directory in one operation; a failed build leaves the previous output available.
+
 ## smgen watch
 
-Start a dev server, build pages, and copy assets on filesystem changes.
+Start a dev server, build the site, and rebuild it on source changes.
 
 **Requires inotify-tools.**
+
+The watcher is Linux-only. On macOS, run `smgen serve` in one terminal and `smgen build` after edits in another.
 
 ```bash
 smgen watch

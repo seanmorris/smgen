@@ -1,3 +1,6 @@
+---
+title: Writing Pages
+---
 
 # Writing Pages
 

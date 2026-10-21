@@ -41,69 +41,25 @@ You'll need to configure GitHub Pages to accept deployments from Actions.
 
 ![Select "GitHub Actions" in the dropdown](/github-pages-actions.png)
 
-Once that's configured, you'll need a workflow that can deploy your site to pages. The example below uses `actions/deploy-pages@v4`. You can store it in `.github/workflows/build-and-deploy.yml` and  use it in your own project.
+This repository's `.github/workflows/build-and-deploy.yml` is a complete example. It:
+
+- validates pull requests and pushes on both Ubuntu and macOS;
+- pins third-party actions and the search indexer version;
+- grants deployment permissions only to the deployment job;
+- deploys only successful pushes to `master`; and
+- gets the public `base_url` from `actions/configure-pages` before building.
+
+The essential build step is:
 
 ```yaml
-# Example GitHub Actions workflow
-name: Build and Deploy
+- name: Configure Pages
+  id: pages
+  uses: actions/configure-pages@v5
 
-on: push
-
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-jobs:
-  build:
-
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Get GitHub Pages URL
-        id: get_pages_url
-        run: echo "BASE_URL=$(gh api "repos/$GITHUB_REPOSITORY/pages" --jq '.html_url | rtrimstr("/")')" >> $GITHUB_ENV
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install SMGen
-        run: curl -fsSL https://seanmorris.github.io/smgen/install.sh | sudo bash
-
-      - name: Install SMGen Search
-        run: npm i -g smgen-search
-
-      - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y pandoc php-cli uuid
-
-      - name: Install yq (Go binary)
-        run: |
-          wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/${{ env.YQ_VERSION }}/yq_linux_amd64
-          chmod +x /usr/local/bin/yq
-        env:
-          YQ_VERSION: v4.47.2
-
-      - name: Clear files
-        run: rm -rf ./docs/*
-
-      - name: Build site
-        run: smgen build
-
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: './docs'
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
-
-      - name: Show GitHub Pages URL
-        run: |
-          echo "GitHub Pages URL: ${{ env.BASE_URL }}"
+- name: Build site
+  env:
+    BASE_URL: ${{ steps.pages.outputs.base_url }}
+  run: ./smgen.sh build
 ```
+
+There is no output-clearing step. SMGen stages and replaces the complete output directory itself, and preserves the previous output when generation fails.

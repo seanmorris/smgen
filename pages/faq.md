@@ -23,10 +23,6 @@ wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/${Y
 chmod +x /usr/local/bin/yq
 ```
 
-### Q: I get an error "uuid is required."?
-
-Ensure `uuid` is installed and on your PATH.
-
 ### Q: I get strange YAML errors on pages with no frontmatter?
 
 There seems to be a bug somewhere in the stack when the Markdown file uses `---` for horizontal rules (`<hr />` tags). You can work around this issue by using the equivalent `***` notation to achieve the same end result.
@@ -57,18 +53,19 @@ brew install shivammathur/extensions/yaml@<php-version>
 
 ### Q: Why isn't my search updating?
 
-1) Ensure `smgen-search` is installed:
+1) Ensure search is enabled and `smgen-search` is installed:
 
 ```bash
 npm i -g smgen-search
 ```
 
-2) Run the following in the root of the project:
+2) Run a build in the root of the project:
 
 ```bash
-smgen-search build-index ./pages static/search.bin
-smgen build
+SEARCH_ENABLED=1 smgen build
 ```
+
+The generated index is written directly to the build output. The browser search module and index are fetched only after the visitor focuses or uses the search box.
 
 ### Q: The `smgen proofread` command throws an error
 
