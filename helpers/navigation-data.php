@@ -614,6 +614,10 @@ function navigationBuildLinkTree($menuName, $links)
 
 function navigationRunCommand($command)
 {
+	if(!function_exists('exec'))
+	{
+		return '';
+	}
 	$output = [];
 	$status = 0;
 	exec($command . ' 2>/dev/null', $output, $status);
@@ -623,12 +627,12 @@ function navigationRunCommand($command)
 function navigationFilesystemBirthTime($path)
 {
 	$quoted = escapeshellarg($path);
-	$value = navigationRunCommand('stat -c %W -- ' . $quoted);
-	if(ctype_digit($value) && (int) $value > 0)
+	if(PHP_OS_FAMILY === 'Darwin' || PHP_OS_FAMILY === 'BSD')
 	{
-		return (int) $value;
+		$value = navigationRunCommand('stat -f %B ' . $quoted);
+		return ctype_digit($value) && (int) $value > 0 ? (int) $value : null;
 	}
-	$value = navigationRunCommand('stat -f %B ' . $quoted);
+	$value = navigationRunCommand('stat -c %W -- ' . $quoted);
 	return ctype_digit($value) && (int) $value > 0 ? (int) $value : null;
 }
 
