@@ -1,55 +1,59 @@
 ---
 title: Deployment
-weight: 4
+weight: 6
 ---
 
 # Deployment
 
-## Custom Hosting
+SMGen produces static files under `OUTPUT_DIR`, which defaults to `docs/`. A
+web server does not need PHP, Pandoc, `yq`, or SMGen after the build finishes.
 
-You can host the generated site by uploading the contents of `docs/` to any static-hosting provider (Netlify, S3, etc.).
+## Set the Public URL
 
-## GitHub Pages
-
-Make sure to set `BASE_URL` correctly. This is especially important if the site exists in a subdirectory on your domain. Use the full public URL, without a trailing slash. You can either set it in `.smgen-rc` or use an environment variable on the CLI:
+Set `BASE_URL` to the site's public root before a production build:
 
 ```bash
-BASE_URL=https://example.com/subdir smgen build
+BASE_URL=https://example.com/project smgen build
 ```
 
-GitHub Pages can be handled in two ways: you can simply build to the `docs/` directory and commit that, or you can use a CI workflow that builds with the correct `BASE_URL` automatically.
+SMGen uses this value for stylesheet, script, navigation, search, and sitemap
+URLs. It accepts the value with or without a trailing slash.
 
-### Serving from docs/
+## Static Hosting
 
-Enable GitHub Pages deployment from your branch in repository settings
+Build the site, then publish the contents of `OUTPUT_DIR` to the static host:
 
-![Select "Deploy from Branch" in the dropdown](/github-pages-branch.png)
+```bash
+smgen build
+```
 
-Select your branch, and the `/docs` folder. Make sure to use the `/docs` directory or the entire repository will be served.
+Upload the directory as one release. SMGen already removes stale files by
+building a complete replacement output.
 
-![Make sure to pay attention to the folder selector](/github-pages-select-branch.png)
+## GitHub Pages from a Branch
 
-### CI Integration
+To publish committed output, configure GitHub Pages to deploy from the desired
+branch and its `/docs` directory.
 
-You can also build the site completely within a workflow and publish the resulting artifact. This has the advantage of keeping the repository cleaner, and you can also auto-detect your GitHub Pages `BASE_URL`, so there's no need to manage it manually.
+![Select Deploy from a branch](/github-pages-branch.png)
 
-Although it's slightly more complicated, this is the recommended way to publish to GitHub Pages.
+![Select the docs directory](/github-pages-select-branch.png)
 
-You'll need to configure GitHub Pages to accept deployments from Actions.
+Build with the repository's final Pages URL before committing the output. This
+method requires generated files to remain under version control.
 
-**This is not needed if you intend to commit your `/docs` directory and serve that via GitHub Pages.**
+## GitHub Pages with Actions
 
-![Select "GitHub Actions" in the dropdown](/github-pages-actions.png)
+An Actions deployment builds the site on each push and uploads the generated
+artifact. Configure Pages to use GitHub Actions:
 
-This repository's `.github/workflows/build-and-deploy.yml` is a complete example. It:
+![Select GitHub Actions](/github-pages-actions.png)
 
-- validates pull requests and pushes on both Ubuntu and macOS;
-- pins third-party actions and the search indexer version;
-- grants deployment permissions only to the deployment job;
-- deploys only successful pushes to `master`; and
-- gets the public `base_url` from `actions/configure-pages` before building.
+This repository's `.github/workflows/build-and-deploy.yml` provides a complete
+example. It validates pushes and pull requests on Ubuntu and macOS, then deploys
+successful pushes to `master`.
 
-The essential build step is:
+The deployment job obtains the public URL from GitHub before building:
 
 ```yaml
 - name: Configure Pages
@@ -62,4 +66,7 @@ The essential build step is:
   run: ./smgen.sh build
 ```
 
-There is no output-clearing step. SMGen stages and replaces the complete output directory itself, and preserves the previous output when generation fails.
+The workflow pins third-party actions and the search indexer, grants deployment
+permissions only to the deployment job, and uploads `docs/` as the Pages
+artifact. SMGen handles output replacement, so the workflow does not need a
+separate cleanup step.

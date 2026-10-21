@@ -1,50 +1,58 @@
 ---
 title: macOS
 ---
-# macOS Specific Stuff
 
-macOS uses `brew` for most installs; however, PHP may require some work (see below).
+# Install on macOS
+
+Install Bash, Pandoc, and `yq` with Homebrew. macOS already provides `curl`:
 
 ```bash
 brew install bash pandoc yq
 ```
 
-## Installing php-yaml on macOS
+SMGen uses Bash 4 features. A system-wide `smgen` installation invokes the
+Homebrew Bash selected by the script's environment or symlink setup. Confirm
+that the active Bash is version 4 or newer:
 
-Installing PHP can be tricky on non-Linux systems. The default install provided by Homebrew does not include the yaml extension, so we can use [shivammathur's distribution](https://setup-php.com/) to install PHP with yaml support.
+```bash
+bash --version
+```
 
-Add the repositories to brew:
+## Install PHP and YAML
+
+Homebrew's standard PHP formula does not include the YAML extension. Add
+shivammathur's PHP and extension taps:
 
 ```bash
 brew tap shivammathur/php
 brew tap shivammathur/extensions
 ```
 
-Install and override PHP with the newly installed version:
+Install a matching PHP and YAML extension. This example uses PHP 8.4:
 
 ```bash
 brew install shivammathur/php/php@8.4
 brew link --overwrite --force shivammathur/php/php@8.4
-```
-
-Ensure PHP is installed correctly and the correct version is being invoked:
-
-```bash
-php -v
-```
-
-```bash
 brew install shivammathur/extensions/yaml@8.4
 ```
 
-Ensure the yaml extension is installed and usable from PHP:
+Verify both PHP and the extension:
 
 ```bash
-php -m | grep yaml
+php -v
+php -m | grep -i '^yaml$'
 ```
 
-## `smgen watch` is unavailable
+## Build Without the Watcher
 
-Unfortunately inotify-tools is not available on macOS, so the file watcher is currently unavailable.
+`smgen watch` depends on Linux `inotify-tools`. Use two terminals on macOS:
 
-You can, however, manually call `smgen serve` and `smgen build`.
+```bash
+smgen serve
+```
+
+Run a build in the other terminal after source changes:
+
+```bash
+smgen build
+```

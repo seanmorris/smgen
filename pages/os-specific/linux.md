@@ -2,53 +2,52 @@
 title: Linux
 ---
 
-# Linux Specific Stuff
+# Install on Linux
 
-## Debian
+SMGen requires Bash 4 or newer, PHP CLI with the YAML extension, mikefarah
+`yq` 4, and Pandoc. Install `curl` for initialization and updates. Install
+`inotify-tools` for `smgen watch` and `aspell` for proofreading.
 
-Installing the dependencies on Debian and derivatives is simple. All but `yq` are available from the default repositories:
+## Debian and Ubuntu
 
 ```bash
-apt install php php-yaml bash pandoc inotify-tools
-
-YQ_VERSION=v4.47.2
-wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64
-chmod +x /usr/local/bin/yq
+apt install bash php php-yaml pandoc curl inotify-tools aspell
 ```
 
 ## Fedora
 
-Installing the dependencies on Fedora and related distributions is straightforward:
-
 ```bash
-dnf install php php-yaml bash pandoc inotify-tools
-
-YQ_VERSION=v4.47.2
-wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64
-chmod +x /usr/local/bin/yq
+dnf install bash php php-yaml pandoc curl inotify-tools aspell
 ```
 
 ## Arch Linux
 
-On Arch Linux and derivatives, install everything from the official repositories:
-
 ```bash
-pacman -Syu php php-yaml bash pandoc util-linux inotify-tools
-
-YQ_VERSION=v4.47.2
-wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64
-chmod +x /usr/local/bin/yq
+pacman -Syu bash php php-yaml pandoc curl inotify-tools aspell
 ```
 
-## Other Distributions
+## Install `yq`
 
-Install the equivalent packages using your distribution's package manager and install `yq` manually:
+Package repositories may contain another program named `yq`. Check the version
+and install the mikefarah release when needed:
 
 ```bash
-# Replace <pkg-manager> with your distro's package manager (e.g., apt, yum, zypper, apk).
-<pkg-manager> install php php-yaml bash pandoc inotify-tools
-
 YQ_VERSION=v4.47.2
-wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64
+wget -qO /usr/local/bin/yq "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64"
 chmod +x /usr/local/bin/yq
+yq --version
+```
+
+Use the corresponding binary name from the
+[mikefarah/yq releases](https://github.com/mikefarah/yq/releases) on non-AMD64
+systems.
+
+## Verify the Build Tools
+
+```bash
+bash --version
+php -v
+php -m | grep -i '^yaml$'
+yq --version
+pandoc --version
 ```

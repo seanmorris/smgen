@@ -4,7 +4,7 @@ title: Search Integration Example
 
 # Search Integration Example
 
-This example demonstrates how to add full-text search to your site using [smgen-search](https://www.npmjs.com/package/smgen-search).
+SMGen can build a local full-text index with [smgen-search](https://www.npmjs.com/package/smgen-search).
 
 ## Prerequisites
 
@@ -71,7 +71,7 @@ Run the standard build command:
 smgen build
 ```
 
-Open your site in a browser and try typing in the search box in the header. Results will appear as you type.
+Open the site and enter a query in the header search box. Results update as the query changes.
 
 The reader source is distributed under Apache-2.0 with its attribution in
 `static/vendor/smgen-search/NOTICE`.

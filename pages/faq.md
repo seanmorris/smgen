@@ -1,93 +1,128 @@
 ---
-title: FAQ & Troubleshooting
-weight: 5
+title: FAQ and Troubleshooting
+weight: 7
 ---
 
-# FAQ & Troubleshooting
+# FAQ and Troubleshooting
 
-### Q: I get an error "php is required."?
+## Why does SMGen report that a command is required?
 
-Ensure PHP CLI is installed and `php` is on your PATH.
+Install the named executable and ensure it is on `PATH`. Every build requires
+Bash 4 or newer, PHP CLI with the YAML extension, mikefarah `yq` 4, and Pandoc.
+The `watch`, `proofread`, and search features have additional optional tools.
 
-### Q: I get an error "pandoc is required."?
+## Why does `yq` report a parser or `jq` error?
 
-Ensure Pandoc is installed and `pandoc` is on your PATH.
+Several unrelated programs use the name `yq`. SMGen requires the Go executable
+from [mikefarah/yq](https://github.com/mikefarah/yq), version 4. Confirm the
+installed program:
 
-### Q: I get yq: Error running jq: ParserError: did not find expected &lt;document start&gt;
+```bash
+yq --version
+```
 
-You've got `jq` installed, and it's aliased to `yq`. You need the actual `yq` binary:
+On Linux, install a pinned release directly when the package manager supplies a
+different program:
 
 ```bash
 YQ_VERSION=v4.47.2
-wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64
+wget -qO /usr/local/bin/yq "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64"
 chmod +x /usr/local/bin/yq
 ```
 
-### Q: I get strange YAML errors on pages with no frontmatter?
+## Why is page frontmatter ignored?
 
-There seems to be a bug somewhere in the stack when the Markdown file uses `---` for horizontal rules (`<hr />` tags). You can work around this issue by using the equivalent `***` notation to achieve the same end result.
+The opening `---` marker must be the first content in the file. The closing
+marker must appear on its own line. SMGen accepts Unix and Windows line endings.
 
-### Q: Front-matter isn't being applied?
-
-Check that your YAML block is enclosed between triple dash (`---`) markers at the top of the file.
-
-Ensure there are no characters before or after the `---` on those lines, and that the first line in the file is `---`.
-
-### Q: Custom CSS/JS not loading?
-
-Verify your `STYLES` or `SCRIPTS` variables and correct paths in `.smgen-rc`.
-
-### Q: smgen watch fails or is unavailable?
-
-The `smgen watch` command relies on the Linux `inotify-tools` package for filesystem events. On systems without `inotify-tools` support (e.g., macOS), the watcher is not available. You can still use `smgen serve` and manually rebuild with `smgen build`, or install `inotify-tools` on Linux (`apt install inotify-tools`, `dnf install inotify-tools`, `pacman -S inotify-tools`).
-
-### Q: How do I install the PHP YAML extension?
-
-Make sure the PHP YAML extension is installed so that SMGen can parse YAML front-matter. On most Linux distros install the `php-yaml` package (e.g., `apt install php-yaml`, `dnf install php-yaml`, `pacman -S php-yaml`). On macOS, use shivammathur's taps:
-
-```bash
-brew tap shivammathur/php
-brew tap shivammathur/extensions
-brew install shivammathur/extensions/yaml@<php-version>
+```yaml
+---
+title: Example
+---
 ```
 
-### Q: Why isn't my search updating?
+A `---` horizontal rule later in an ordinary Markdown page is valid.
 
-1) Ensure search is enabled and `smgen-search` is installed:
+## Why did a build edit my page source?
+
+A page selected into a timeline needs `date` or `created`. If both are absent,
+SMGen derives a creation time and writes one `created` field after menu
+validation succeeds. Supply either field yourself to prevent that write.
+
+SMGen does not generate `modified`.
+
+## Why did a failed build leave the old site in place?
+
+SMGen renders the complete site in a temporary directory. It replaces
+`OUTPUT_DIR` only after every page succeeds. A failed render or validation step
+leaves the previous site available. A failed `after-smgen.sh` hook restores the
+previous output.
+
+## Why is custom CSS or JavaScript missing?
+
+Confirm that the source file is under `STATIC_DIR`, then check `STYLES`,
+`DEFER_SCRIPTS`, `BODY_SCRIPTS`, or the corresponding inline setting. A
+root-relative URL is joined to `BASE_URL`.
+
+Leave `BASE_URL` empty in development. An absolute local value such as
+`http://localhost:8000` sends asset requests to that exact browser-visible
+origin, which fails when a container, virtual machine, or port-forwarding
+service exposes the development server under another host name.
+
+A successful build replaces the complete output. Files written directly to
+`OUTPUT_DIR` disappear unless they also exist in a source directory or a build
+hook recreates them.
+
+## Why does a menu fail to build?
+
+SMGen validates menu names, fields, renderers, link targets, parents, cycles,
+regions, and timeline entries. Read the first error printed by the build. The
+message includes the menu, provider, page, or field that failed validation.
+
+Common causes include:
+
+- a region names an undefined menu
+- a link defines more than one of `page`, `href`, or `group`
+- a parent ID does not exist in the same menu
+- a timeline contains an external or group link
+- a page names a menu that has no definition
+
+See [Navigation and Plugins](navigation.html) for the complete schema.
+
+## Why is search missing or stale?
+
+Install the pinned indexer and enable search:
 
 ```bash
-npm i -g smgen-search
-```
-
-2) Run a build in the root of the project:
-
-```bash
+npm install -g smgen-search@0.0.1
 SEARCH_ENABLED=1 smgen build
 ```
 
-The generated index is written directly to the build output. The browser search module and index are fetched only after the visitor focuses or uses the search box.
+With `SEARCH_ENABLED=1`, a build fails when neither the indexer nor a prebuilt
+`static/search.bin` exists. With `SEARCH_ENABLED=auto`, SMGen disables search
+when neither input exists.
 
-### Q: The `smgen proofread` command throws an error
+The browser loads the reader and binary index after the search field receives
+focus or a query.
 
-#### Error: The file "./aspell.txt" is not in the proper format.
+## Why is `smgen watch` unavailable on macOS?
 
-Make sure your aspell dictionary  (`ASPELL_DICT`, default `./aspell.txt`) has a valid header on the first line:
+The watcher uses Linux `inotify-tools`. On macOS, run `smgen serve` in one
+terminal and run `smgen build` after changes in another.
 
-```bash
+## How do I install the PHP YAML extension?
+
+Linux distributions usually provide a `php-yaml` package. On macOS, install a
+matching PHP and YAML extension through shivammathur's Homebrew taps. See the
+[macOS installation page](os-specific/mac-osx.html) for commands.
+
+## Why does `smgen proofread` reject my dictionary?
+
+`ASPELL_DICT` defaults to `aspell.txt`. Its first line must declare the personal
+dictionary format and encoding:
+
+```text
 personal_ws-1.1 en utf8
 ```
 
-#### "The character '�' (U+XX) may not appear in the middle of a word." ?
-
-You've got unicode in your aspell dict without specifying it in the header.
-
-Make sure your aspell dictionary has `utf8` as the last element of the FIRST line:
-
-```bash
-personal_ws-1.1 en utf8
-```
-
-### Other Tips
-
-- Use `set -x` in `smgen` to debug build steps.
-- Ensure `yq` version supports `--front-matter=extract`.
+Add one accepted word per line after the header.

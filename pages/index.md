@@ -2,112 +2,103 @@
 title: Getting Started
 weight: 0
 author:
-    - name: Sean Morris
+  - name: Sean Morris
 ---
 
 # SMGen
-*Static Site Generator*
 
-Bash-driven static-site generator that follows the Unix philosophy. Converts Markdown files into a fully templated HTML website using PHP, yq, and Pandoc:
+SMGen converts Markdown into a static HTML site. Pandoc renders the content,
+PHP templates provide the page structure, and Bash coordinates configuration,
+assets, navigation, search, and sitemap generation.
 
-### Requirements
+## Requirements
 
-- **Bash** (shell, version >= 4)
-- **PHP** (cli & php-yaml)
-- **yq** (YAML processor)
-- **Pandoc** (Markdown to HTML converter)
+A build requires:
 
-### Recommended
+- Bash 4 or newer
+- PHP CLI with the YAML extension
+- `yq` 4 from [mikefarah/yq](https://github.com/mikefarah/yq)
+- Pandoc
 
-- **inotify-tools** (Filesystem event watcher)
-- **aspell** (SpellChecker)
-- **smgen-search** (Search index generator)
+The installer and `smgen init` also require `curl`. Install `inotify-tools` to
+use `smgen watch`, `aspell` to use `smgen proofread`, and `smgen-search` to
+build a search index.
+
+On Debian or Ubuntu:
 
 ```bash
-apt install php php-yaml bash pandoc inotify-tools
+apt install bash php php-yaml pandoc curl inotify-tools aspell
 
 YQ_VERSION=v4.47.2
-wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64
+wget -qO /usr/local/bin/yq "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64"
 chmod +x /usr/local/bin/yq
 ```
 
-## Install
+See the [Linux](os-specific/linux.html) and [macOS](os-specific/mac-osx.html)
+pages for platform-specific installation notes.
 
-To install `smgen` (the static site generator) system-wide and set up an update path, run:
+## Install SMGen
+
+Install or update the command under `/usr/local/bin`:
 
 ```bash
 curl -fsSL https://seanmorris.github.io/smgen/install.sh | sudo bash
 ```
 
-This command clones the repository into `/usr/share/smgen`, creates a `smgen` symlink in `/usr/local/bin`, and can be used to update `smgen` by re-running this script. Updates are staged before the installed checkout is replaced, and the installer refuses to overwrite a non-Git directory at that path.
+The installer stages the Git checkout before replacing `/usr/share/smgen`. It
+refuses to replace an existing non-Git directory at that location.
 
-## Getting Started
+## Create a Site
 
-Create a directory for your project and run `smgen init` to set up the folder structure and standard template.
+Initialize an empty directory:
 
 ```bash
-mkdir my-project/
-cd my-project/
-
+mkdir my-site
+cd my-site
 smgen init
 ```
 
-Then open `.smgen-rc` or `.smgen.yaml` and configure your details:
+Set the site identity in `.smgen-rc`:
 
 ```bash
-PRODUCT_NAME="Your Product Name"
-TAGLINE="Your Product Tagline"
-ORGANIZATION="Your Tagline"
+PRODUCT_NAME="My Site"
+TAGLINE="Project documentation"
+ORGANIZATION="Example Organization"
 ```
 
-Add Markdown files under the `pages/` directory. Each file may start with YAML front-matter:
+Replace `pages/index.md` with your first page:
 
 ```markdown
 ---
 title: Home
-author:
-  - name: Your Name
 ---
 
-# Welcome to My Site
+# Welcome
 
-This is my first page content.
+This page was built with SMGen.
 ```
 
-Save it as `pages/index.md` (or any path under `pages/`).
-
-Build the project:
+Build and serve the site:
 
 ```bash
 smgen build
-```
-
-And kick off the dev server:
-
-```bash
 smgen serve
 ```
 
-Open <http://localhost:8000> in your browser to view the site and see the project running.
+Open <http://localhost:8000>. The generated files are under `docs/` unless you
+change `OUTPUT_DIR`.
 
-On Linux, you can also run `smgen watch` to spin up the dev server and build changes automatically whenever the filesystem is updated:
+On Linux, one command can build, serve, and watch the source directories:
 
 ```bash
 smgen watch
 ```
 
-## Search Integration
+## Next Steps
 
-Add full-text search to your site with the [smgen-search CLI](https://www.npmjs.com/package/smgen-search). See [Search Integration Example](examples/search.html) for detailed setup instructions.
-
-## Templates
-
-The following files are created by the `init` script and can be modified for customization:
-
-* `templates/page.php`
-* `templates/header.php`
-* `templates/footer.php`
-
-See [Customization#Themes, CSS, and JS Injection](customization.html#themes-css-and-js-injection) for info on writing or customizing your own styles and JavaScript.
-
-See [Customization#Writing Your Own Templates](customization.html#writing-your-own-templates) for info on creating/editing your own templates.
+- [Writing Pages](writing-pages.html): page metadata, directory metadata, and output paths
+- [CLI Reference](cli.html): every command and its requirements
+- [Configuration](configuration.html): precedence, defaults, assets, paths, and search
+- [Navigation and Plugins](navigation.html): menus, regions, timelines, and plugins
+- [Customization](customization.html): templates, themes, and injected assets
+- [Deployment](deployment.html): static hosting and GitHub Pages

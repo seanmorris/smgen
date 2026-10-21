@@ -164,6 +164,12 @@ test_default_build_generates_expected_output()
 	assert_file_missing "${site}/docs/sitemap.xml "
 	assert_file_contains "${site}/docs/index.html" "<!DOCTYPE HTML>"
 	assert_file_contains "${site}/docs/sitemap.xml" "<urlset"
+	assert_file_contains "${site}/docs/index.html" 'href="/default.css"'
+	assert_file_contains "${site}/docs/index.html" 'src="/main.js"'
+	assert_file_excludes "${site}/docs/index.html" 'http://localhost:8000/default.css'
+	assert_file_excludes "${site}/docs/index.html" 'http://localhost:8000/main.js'
+	assert_file_exists "${site}/docs/default.css"
+	assert_file_exists "${site}/docs/main.js"
 	assert_file_excludes "${site}/docs/index.html" '/archive.css'
 	assert_file_missing "${site}/docs/archive.css"
 }
@@ -208,7 +214,7 @@ EOF
 	assert_file_contains "${site}/public/index.html" "${expected_base_url}/sitemap.xml"
 }
 
-test_env_base_url_overrides_localhost_defaults()
+test_env_base_url_overrides_same_origin_defaults()
 {
 	begin_test "env-base-url"
 	local site
@@ -650,7 +656,7 @@ test_search_is_optional_local_and_lazy()
 		SEARCH_ENABLED=1 "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-enabled.log" 2>&1
 	)
 	assert_file_contains "${site}/docs/index.html" 'id="search-query"'
-	assert_file_contains "${site}/docs/index.html" 'data-search-reader="http://localhost:8000/vendor/smgen-search/SearchReader.mjs"'
+	assert_file_contains "${site}/docs/index.html" 'data-search-reader="/vendor/smgen-search/SearchReader.mjs"'
 	assert_file_exists "${site}/docs/vendor/smgen-search/SearchReader.mjs"
 }
 
@@ -980,7 +986,7 @@ main()
 	test_init_creates_a_buildable_project
 	test_default_build_generates_expected_output
 	test_custom_output_dir_builds_and_links_sitemap
-	test_env_base_url_overrides_localhost_defaults
+	test_env_base_url_overrides_same_origin_defaults
 	test_nested_static_assets_preserve_paths_on_build
 	test_page_template_cannot_escape_template_dir
 	test_project_helpers_override_core_helpers

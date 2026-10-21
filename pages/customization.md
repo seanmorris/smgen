@@ -1,319 +1,179 @@
 ---
 title: Customization
-weight: 3
+weight: 5
 ---
 
 # Customization
 
-Customize your site appearance and behavior:
+SMGen separates authored assets, templates, and helpers from generated output.
+Keep custom files under `static/`, `templates/`, or `helpers/` so each complete
+build can replace `OUTPUT_DIR` safely.
 
-## Themes, CSS, and JS Injection
+## Add Styles and Scripts
 
-Use `.smgen-rc` or `.smgen.yaml` to add custom styles and scripts. For example, if you have files under `static/`:
+Place browser assets under `static/`, then add their published URLs to
+`.smgen.yaml`:
+
+```yaml
+STYLES:
+  - /default.css
+  - /theme.css
+DEFER_SCRIPTS:
+  - /main.js
+BODY_SCRIPTS:
+  - /analytics.js
+```
+
+Every build copies the complete `STATIC_DIR` tree. `smgen watch` monitors that
+directory and runs a complete build after a static file changes. Copying a CSS
+file publishes it, while `STYLES` tells the page template to link it.
+
+`SCRIPTS` emits blocking scripts in the document head. Use `DEFER_SCRIPTS` for
+scripts that do not need to block HTML parsing. `BODY_SCRIPTS` emits scripts
+before the closing body tag.
+
+Inline local files when an extra request would cost more than the added HTML:
+
+```yaml
+INLINE_STYLES:
+  - static/critical.css
+INLINE_SCRIPTS:
+  - static/critical.js
+INLINE_BODY_SCRIPTS:
+  - static/after-content.js
+```
+
+Inline settings read the named file during the build. URL-based settings pass
+through `BASE_URL` unless they already contain an absolute URL, protocol,
+data URL, email link, or telephone link.
+
+## Use Built-in Assets
+
+A project initialized by SMGen owns copies of the standard templates and
+assets. Existing projects can consume later core assets in either of two ways.
+
+Copy the complete built-in asset tree before applying project overrides:
+
+```yaml
+INHERIT_CORE_STATIC: 1
+```
+
+Copy selected files only:
+
+```yaml
+CORE_ASSETS:
+  - default.css
+  - main.js
+  - search.svg
+```
+
+Project files under `STATIC_DIR` always copy last, so a file with the same path
+overrides the built-in version. `CORE_ASSETS` takes precedence over
+`INHERIT_CORE_STATIC`.
+
+## Create a Theme
+
+The default stylesheet exposes color and layout values as CSS custom
+properties. Load a theme after `default.css` and override the values you need:
 
 ```css
-/* static/example.css */
-.active-link {
-    color: #d33;
-    text-decoration: underline;
+:root.theme-project {
+  --background: #10131a;
+  --fg-0: #f4f7ff;
+  --surface-0: #1a2030;
+  --link: #8fc7ff;
+  --primary: #67e0ba;
 }
 ```
 
-```js
-// static/example.js
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('Example.js loaded');
-});
+```yaml
+DEFAULT_THEME: theme-project
+STYLES:
+  - /default.css
+  - /theme.css
 ```
 
-Then inject them into your build via `.smgen-rc`:
+Use `pandoc --list-highlight-styles` to list accepted values for
+`HIGHLIGHT_STYLE`.
 
-```bash
-STYLES=$(cat <<-END
-    /example.css
-END
-)
+## Write a Page Template
 
-SCRIPTS=$(cat <<-END
-    /example.js
-END
-)
+A page template combines PHP with Pandoc template variables. Copy
+`templates/page.php` when you need a different document structure, then select
+the new file from frontmatter:
+
+```yaml
+---
+title: Product Guide
+template: templates/product-page.php
+---
 ```
 
-These will insert `<link rel="stylesheet" href="/example.css">` and `<script src="/example.js"></script>` in the document `<head>`.
-
-`SCRIPTS` preserves blocking script behavior for compatibility. Prefer `DEFER_SCRIPTS` for scripts that do not need to block HTML parsing:
-
-```bash
-DEFER_SCRIPTS=$(cat <<-END
-    /example.js
-END
-)
-```
-
-To inline files directly in the HTML rather than referencing them, use `INLINE_STYLES` and `INLINE_SCRIPTS`:
-
-```bash
-INLINE_STYLES=$(cat <<-END
-    /inline.css
-END
-)
-
-INLINE_SCRIPTS=$(cat <<-END
-    /inline.js
-END
-)
-```
-
-With these set, the contents of `/inline.css` and `/inline.js` will be embedded in the document `<head>`.
-
-If you want scripts at the end of the page instead, use `BODY_SCRIPTS` or `INLINE_BODY_SCRIPTS`:
-
-```bash
-BODY_SCRIPTS=$(cat <<-END
-    /deferred.js
-END
-)
-```
-
-### Inheriting Core Assets
-
-If your site wants to use the built-in `smgen` assets without copying them into the project, enable core static inheritance:
-
-```bash
-INHERIT_CORE_STATIC=1
-
-STYLES=$(cat <<-END
-    /default.css
-END
-)
-
-DEFER_SCRIPTS=$(cat <<-END
-    /main.js
-END
-)
-```
-
-With `INHERIT_CORE_STATIC=1`, `smgen` copies its own `static/` directory into the output first, then overlays your project's `static/` directory on top. Any file you add locally with the same name overrides the built-in asset.
-
-If you only want a few built-in assets, use `CORE_ASSETS` instead:
-
-```bash
-CORE_ASSETS=$(cat <<-END
-    default.css
-    main.js
-END
-)
-```
-
-`CORE_ASSETS` copies only the listed files from `smgen`'s built-in `static/` directory, then overlays your project's `static/` directory on top. This is useful when you want to consume core assets selectively without copying the full tree.
-
-### CSS Theming
-
-SMGen's default stylesheet (`static/default.css`) defines a set of CSS custom properties
-(variables) for colors, spacing, and other design tokens in `:root` and `:root.dark`
-near the bottom of the file. You can override any of these values by loading a
-custom theme CSS after the default styles.
-
-1. Create a theme file (e.g. `static/theme.css`) and redefine variables:
-
-```css
-:root.theme-cosmic {
-	/* Core palette */
-	--bg-0: #0A0E20;   /* deep space navy */
-	--bg-1: #1F0740;   /* cosmic plum */
-	--bg-2: #020D1B;   /* near-black blue */
-
-	--background: var(--bg-0) url('./bg.jpg') no-repeat center / cover fixed;
-
-	--fg-0: #EAF2FF;   /* primary text on dark */
-	--fg-1: #B9C7FF;   /* secondary text */
-	--muted: #8CA0B3;  /* subtle labels */
-
-	/* UI surface tokens */
-	--surface-0: color-mix(in srgb, color-mix(in oklab, var(--acc-violet)  15%, #000000), transparent 30%);
-	--surface-1: color-mix(in srgb, color-mix(in oklab, var(--acc-magenta) 30%, #000000), transparent 40%);
-	--surface-2: color-mix(in srgb, color-mix(in oklab, var(--acc-gold)    20%, #000000), transparent 40%);
-	--surface-3: color-mix(in srgb, color-mix(in oklab, var(--acc-gold)    20%, #F3F6FF), transparent 25%);
-
-	--border: color-mix(in oklab, var(--fg-1) 15%, transparent);
-	--shadow: 0 10px 30px color-mix(in oklab, black 70%, transparent);
-	--ring: color-mix(in oklab, var(--acc-cyan) 60%, white 10%);
-
-	/* Semantic */
-	--primary: var(--acc-cyan);
-	--primary-contrast: #041018;
-	--link: var(--acc-gold);
-	--success: #43E6A2;
-	--warning: var(--acc-gold);
-	--danger:  #FF516D;
-}
-```
-
-2. Include your theme file after the default stylesheet in `.smgen-rc` or `.smgen.yaml`:
-
-```bash
-STYLES=$(cat <<-END
-  /default.css
-  /theme.css
-END
-)
-```
-
-You can also place theme-specific markup directly in your templates if you need custom structure beyond stylesheet loading.
-
-### Syntax Highlighting
-
-You can set the syntax highlighting theme using the `HIGHLIGHT_STYLE` variable in .smgen-rc:
-
-```bash
-HIGHLIGHT_STYLE=zenburn
-```
-
-You can list the available syntax highlighters with `pandoc --list-highlight-styles`:
-
-```bash
-pandoc --list-highlight-styles
-# pygments
-# tango
-# espresso
-# zenburn
-# kate
-# monochrome
-# breezedark
-# haddock
-```
-
-## Writing Your Own Templates
-
-This project uses PHP+Pandoc templates to wrap your Markdown content in HTML. Templates are a blend of Pandoc template variables (e.g. `$body$`, `$title$`, `$pagetitle$`, `$styles.html()$`, `$for(css)$…`) and PHP code. To create a custom template:
-
-1. Copy the default `templates/page.php` to a new file (e.g. `templates/my-page.php`).
-2. Modify the HTML and Pandoc placeholders as needed.
-3. In your page's YAML front-matter, set the `template` field. For example:
-
-   ```markdown
-   ---
-   title: Custom Template Example
-   template: templates/my-page.php
-   ---
-
-   # My Page Heading
-   This page uses the custom template specified above.
-   ```
-
-Pandoc will use your custom template when rendering that page. You can also create extension-specific templates named `<ext>-page.php` (or `.html`) in the `templates/` directory and the build script will pick them up automatically.
-
-Below is a minimal example:
+A minimal template can render named regions around Pandoc's page body:
 
 ```php
-<?php
-// templates/my-page.php
-?>
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="utf-8" />
   <title>$if(pagetitle)$${pagetitle}$else$${title}$endif$</title>
   $for(css)$<link rel="stylesheet" href="$css$" />$endfor$
   $styles.html()$
 </head>
 <body>
-  <?php renderNavBar(); ?>
-  $body$
+  <?php if (menuRegionExists('header')): ?>
+    <header><?php renderMenuRegion('header'); ?></header>
+  <?php endif; ?>
+  <main>
+    <?php if (menuRegionExists('sidebar')): ?>
+      <aside><?php renderMenuRegion('sidebar'); ?></aside>
+    <?php endif; ?>
+    <article>$body$</article>
+  </main>
 </body>
 </html>
 ```
 
-## Front-matter Fields
+The template path must resolve inside `TEMPLATE_DIR`. SMGen selects a page
+template in this order:
 
-Leverage custom fields in YAML front-matter to pass variables into Pandoc templates and your PHP wrapper.
+1. the page's `template` field
+2. `templates/<source-extension>-page.php`
+3. `templates/<source-extension>-template.html`
+4. `templates/page.php`
 
-## Custom Templates per Extension
+For a Markdown source, the extension-specific names are `md-page.php` and
+`md-template.html`.
 
-Place extension-specific templates:
+## Change Header and Footer Includes
 
-- `templates/md-page.php`
-- `templates/html-template.html`
-
-## Template Fallback Logic
-
-The build script selects templates in this order:
-
-1. Front-matter field `template`.
-2. `templates/<ext>-page.php`, if present.
-3. `templates/<ext>-template.html`, if present.
-4. Default `templates/page.php`.
-
-## Navigation Customization
-
-Define named menus and their template regions in `.smgen.yaml`:
+Set project-wide include defaults through `HEADER` and `FOOTER`, or select them
+for one page with frontmatter:
 
 ```yaml
-MENUS:
-  primary:
-    renderer: flat
-  docs:
-    label: Documentation
-    renderer: tree
-    hierarchy: source
-  archive:
-    renderer: timeline
-MENU_REGIONS:
-  header: [primary]
-  sidebar: [docs, archive]
+header: templates/product-header.php
+footer: templates/product-footer.php
 ```
 
-Templates render them with `renderMenuRegion('header')`, `renderMenuRegion('sidebar')`, or `renderMenu('primary')`. Menus are compiled into static HTML.
+Both paths must resolve inside `TEMPLATE_DIR`.
 
-Page and directory frontmatter can use `menus` to select named menus and set `title`, `parent`, `weight`, `expanded`, `variant`, `icon`, or `description` for each link.
+## Override Helpers
 
-The original left-sidebar fields remain compatible:
+Set `HELPERS_DIR` to a project helper directory. SMGen checks it for
+`domain.lua`, `navigation-data.php`, and `sitemap.php` before using the built-in
+versions. A project `navbar.php` may define a legacy `renderNavBar()` while the
+core named-menu functions remain available.
 
-- `weight` — numeric weight for ordering pages and sections (lower values appear first).
-- `title` — override the link text for a page or section heading.
-- `leftBarLink` — set to `false` to omit a specific page or directory from the nav.
-- `leftBarShow` — set to `false` in a page's front-matter to hide the entire sidebar on that page.
+Helper overrides execute as part of the build and receive the same environment
+as their built-in counterparts. Keep their output deterministic so a complete
+rebuild produces the same site from the same sources.
 
-The sidebar can compose the normal page tree with a dated archive:
+## Configure Navigation
 
-```yaml
-NAVIGATION_WIDGETS:
-  - tree
-  - archive
-ARCHIVE_TITLE: Timeline
-```
+Define menus and regions in YAML, then render them from templates. The
+[Navigation and Plugins](navigation.html) page documents menu fields, page
+membership, timelines, plugin selectors, and alter hooks.
 
-Pages with a `date` value appear in an expandable year/month timeline with a calendar above it. Set `archive: false` on a dated page to omit it. The build precomputes the hierarchy, counts, and calendar links; the browser uses native `<details>` elements for expansion. SMGen copies and links `archive.css` only when this widget is enabled and adds no archive-specific JavaScript.
-
-### Examples
-
-Front-matter in an individual page (`foo.md`):
-
-```yaml
----
-title: "My FAQ"
-weight: 100
-leftBarLink: false
-leftBarShow: false
----
-```
-
-Directory-level settings (`pages/guides/.fm.yaml`):
-
-```yaml
-title: "Guides & Tutorials"
-weight: 50
-leftBarLink: true
-```
-
-## HTML Partial Includes
-
-Use PHP includes inside templates for reusable markup snippets.
-
-## Table of Contents Settings
-
-Control the TOC with front-matter `TOC`. When omitted, the TOC is enabled by default.
-
-```yaml
-TOC: false
-```
+The original `renderNavBar()`, `leftBarLink`, `leftBarShow`,
+`NAVIGATION_WIDGETS`, and `ARCHIVE_TITLE` interfaces remain available for older
+projects.

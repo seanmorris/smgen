@@ -1,104 +1,178 @@
 ---
 title: Configuration
-weight: 2
+weight: 3
 ---
 
 # Configuration
 
-You can configure the generator via `.smgen.yaml`, `.smgen-rc`, `.env`, environment variables, and pre/post hooks.
+SMGen reads project configuration from the current working directory. Run every
+command from the project root unless you supply all required paths through the
+calling environment.
 
-> **Note:** `smgen` reads configuration from your current working directory, where you invoke the script. By default it looks for `.smgen.yaml`, `.smgen-rc`, `.env`, `pages/`, `templates/`, and `static/` there.
+## Precedence
 
-## Configuration Sources
-
-Configuration is loaded in this order:
+SMGen resolves supported settings in this order, from lowest to highest:
 
 1. built-in defaults
 2. `.smgen.yaml`
-3. `.smgen.<environment>.yaml`, selected with `SMGEN_ENVIRONMENT`
+3. `.smgen.<environment>.yaml`
 4. `.smgen-rc`
 5. `.env`
-6. exported environment variables and command-line overrides
+6. values exported by the calling process
 
-In practice, use:
+Set `SMGEN_ENVIRONMENT=production` to load `.smgen.production.yaml`. The legacy
+lowercase `environment` setting selects the same file when
+`SMGEN_ENVIRONMENT` is empty. Environment names may contain letters, numbers,
+periods, underscores, and hyphens.
 
-- `.smgen.yaml` for fixed declarative values
-- `.smgen-rc` when values need shell expansion or derived paths
-- `.env` for local environment-specific overrides
-- `.smgen.<environment>.yaml` for named targets such as staging or production
+Use `.smgen.yaml` for fixed declarative values. Use `.smgen-rc` for shell
+expansion or computed values. Use `.env` for local overrides. SMGen sources the
+two shell files, so only use configuration from a trusted project.
 
-Both YAML and shell configuration support list values. YAML lists are the clearest choice for `STYLES`, scripts, and asset lists.
+## Site and Page Settings
 
-## Environment Variables
+The following scalar settings work in YAML, shell configuration, or the calling
+environment:
 
-### Product Details
+- `BASE_URL`: prefix for generated links and sitemap URLs. Default: empty.
+- `PRODUCT_NAME`: site name shown by the default header. Default: empty.
+- `TAGLINE`: subtitle shown by the default header. Default: empty.
+- `ORGANIZATION`: organization shown by the default footer. Default: empty.
+- `TITLE_PREFIX`: prefix for HTML page titles. Default: empty.
+- `DEFAULT_THEME`: class on the root `html` element. Default: `theme-default`.
+- `HIGHLIGHT_STYLE`: Pandoc syntax highlight style. Default: `zenburn`.
+- `HEADER`: default header include. Default: `templates/header.php`.
+- `FOOTER`: default footer include. Default: `templates/footer.php`.
+- `DEV_PORT`: port used by `serve` and `watch`. Default: `8000`.
 
-- `BASE_URL` — base URL for generated site (NO TRAILING SLASH, default empty)
-- `PRODUCT_NAME` — product/site name (default empty)
-- `TITLE_PREFIX` — prefix for page titles
-- `ORGANIZATION` — organization name (default empty)
-- `TAGLINE` — product tagline (default empty)
-- `HIGHLIGHT_STYLE` — Pandoc syntax highlighting theme (default `zenburn`)
+SMGen removes a trailing slash from `BASE_URL` when it joins URLs, so either
+form is accepted.
 
-### Page Styling
+## Project Paths
 
-- `STYLES` — newline-separated list of CSS files to include (via `<link>`)
-- `INLINE_STYLES` — newline-separated list of CSS files to inline in `<style>` tags
+- `OUTPUT_DIR`: generated site directory. Default: `./docs`.
+- `PAGES_DIR`: Markdown and source page directory. Default: `./pages`.
+- `TEMPLATE_DIR`: page and include template directory. Default: `./templates`.
+- `STATIC_DIR`: project static asset directory. Default: `./static`.
+- `HELPERS_DIR`: project helper override directory. Default: `./helpers`.
 
-### Page Behavior
+All relative paths resolve from the current working directory. Project copies
+of `domain.lua`, `navigation-data.php`, `sitemap.php`, and `navbar.php` can
+override their documented core behavior through `HELPERS_DIR`. Template
+selection and asset copying reject paths that escape their configured roots.
 
-- `SCRIPTS` — newline-separated list of JS files to include (via `<script src>`)
-- `DEFER_SCRIPTS` — newline-separated list of JS files to include with `defer`
-- `INLINE_SCRIPTS` — newline-separated list of JS files to inline in `<script>` tags in `<head>`
-- `BODY_SCRIPTS` — newline-separated list of JS files to include before `</body>`
-- `INLINE_BODY_SCRIPTS` — newline-separated list of JS files to inline before `</body>`
+## Styles and Scripts
 
-### Project Directories
+These list settings accept YAML sequences or newline-separated shell values:
 
-- `OUTPUT_DIR` — output directory (default `./docs`)
-- `TEMPLATE_DIR` — template files directory (default `./templates`)
-- `STATIC_DIR` — static assets directory (default `./static`)
-- `PAGES_DIR` — source pages directory (default `./pages`)
-- `DEV_PORT` — port used by `smgen serve` and `smgen watch` (default `8000`)
-- `DEFAULT_THEME` — class applied to the root `<html>` element
-- `INHERIT_CORE_STATIC` — copy `smgen`'s built-in static assets first, then overlay your project `static/` directory (default `0`)
-- `CORE_ASSETS` — newline-separated list of built-in `smgen` static assets to copy before overlaying your project `static/` directory
-- `SEARCH_ENABLED` — `auto`, `1`, or `0` (default `auto`)
-- `SEARCH_READER` — browser search-reader module (default `/vendor/smgen-search/SearchReader.mjs`)
-- `NAVIGATION_WIDGETS` — ordered list of sidebar widgets; available values are `tree` and `archive` (default `tree`)
-- `ARCHIVE_TITLE` — visible archive-widget heading (default `Archive`)
-- `PLUGINS` — ordered list of menu plugin manifests
-- `MENUS` — mapping of named menus using the `flat`, `tree`, or `timeline` renderer
-- `MENU_REGIONS` — mapping of template region names to ordered menu names
+- `STYLES`: stylesheet URLs rendered as `link` elements.
+- `INLINE_STYLES`: local CSS files passed to Pandoc as inline header content.
+- `SCRIPTS`: blocking script URLs in the document head.
+- `DEFER_SCRIPTS`: deferred script URLs in the document head.
+- `INLINE_SCRIPTS`: local JavaScript files inlined in the document head.
+- `BODY_SCRIPTS`: script URLs inserted before the closing body tag.
+- `INLINE_BODY_SCRIPTS`: local JavaScript files inlined before the closing body tag.
 
-### Executable Locations
+YAML example:
 
-- `PHP` — PHP executable (default `php`)
-- `PANDOC` — Pandoc executable (default `pandoc`)
-- `YQ` — `yq` executable (default `yq`)
-- `SMG_SEARCH` — `smgen-search` executable (default `smgen-search`)
+```yaml
+STYLES:
+  - /default.css
+  - /theme.css
+DEFER_SCRIPTS:
+  - /main.js
+BODY_SCRIPTS:
+  - /analytics.js
+```
 
-
-## .smgen-rc Overrides
-
-Create a `.smgen-rc` file at the root to override default variables (e.g., custom CSS or asset directory).
-
-Example:
+Shell example:
 
 ```bash
 STYLES=$(cat <<-END
-    /my-theme.css
+/default.css
+/theme.css
 END
 )
 ```
 
+SMGen resolves root-relative asset URLs against `BASE_URL`. Absolute HTTP URLs,
+protocol-relative URLs, data URLs, `mailto` links, and `tel` links pass through
+unchanged.
+
+## Core Assets
+
+Project assets from `STATIC_DIR` always overlay the staged output.
+
+Set `INHERIT_CORE_STATIC=1` to copy every built-in SMGen asset first. Leave it
+at its default value of `0` when the project owns every published asset.
+
+Use `CORE_ASSETS` to copy selected built-in files instead:
+
+```yaml
+CORE_ASSETS:
+  - default.css
+  - main.js
+  - search.svg
+```
+
+`CORE_ASSETS` takes precedence over `INHERIT_CORE_STATIC`. Each entry must stay
+inside SMGen's built-in `static/` directory.
+
+## Search
+
+- `SEARCH_ENABLED`: `auto`, `1`, or `0`. Default: `auto`.
+- `SEARCH_READER`: browser reader module URL. Default: `/vendor/smgen-search/SearchReader.mjs`.
+- `SMG_SEARCH`: search index command. Default: `smgen-search`.
+
+With `SEARCH_ENABLED=auto`, search is enabled when `SMG_SEARCH` is available or
+`STATIC_DIR/search.bin` exists. With `SEARCH_ENABLED=1`, a build fails unless it
+can run the indexer or copy a prebuilt index. With `SEARCH_ENABLED=0`, the
+default header omits the search interface.
+
+When the indexer is available, each build creates a new `search.bin` from
+`PAGES_DIR`. The default browser script waits for focus or a query before it
+loads the reader and index.
+
+## Navigation
+
+These legacy settings remain supported:
+
+- `NAVIGATION_WIDGETS`: ordered `tree` and `archive` widgets. Default: `tree`.
+- `ARCHIVE_TITLE`: heading for the legacy archive widget. Default: `Archive`.
+
+`PLUGINS` is an ordered list of menu plugin manifest paths. It accepts a YAML
+sequence or newline-separated shell value.
+
+`MENUS` and `MENU_REGIONS` are structured mappings and belong in
+`.smgen.yaml` or an environment-specific YAML file. See
+[Navigation and Plugins](navigation.html) for their schema and rendering API.
+
+## Executables and Proofreading
+
+- `PHP`: PHP command. Default: `php`.
+- `PANDOC`: Pandoc command. Default: `pandoc`.
+- `YQ`: `yq` command. Default: `yq`.
+- `SMG_SEARCH`: search index command. Default: `smgen-search`.
+- `ASPELL`: spell-check command. Default: `aspell`.
+- `ASPELL_DICT`: personal dictionary path. Default: `aspell.txt`.
+
 ## Hooks
 
-- `before-smgen.sh` — script to run before the main build.
-- `after-smgen.sh` — script to run after the build completes.
+Place executable shell logic in either project hook:
 
-Hooks run for every build, including rebuilds started by `smgen watch`. The before hook runs before rendering. The after hook runs after the new output has been installed; if it fails, SMGen restores the previous output.
+- `before-smgen.sh`: runs before navigation compilation and page rendering.
+- `after-smgen.sh`: runs after the staged output replaces the previous output.
+
+SMGen runs hooks with Bash. A failed before hook stops the build before output
+replacement. A failed after hook restores the previous output.
 
 ## Output Ownership
 
-SMGen builds into a temporary sibling directory and atomically replaces `OUTPUT_DIR` after a successful render. Files left in an old output disappear on the next successful build. Keep authored assets in `STATIC_DIR`, because `OUTPUT_DIR` is fully managed by SMGen.
+A successful build replaces `OUTPUT_DIR` completely. Files left in an older
+output disappear. Keep authored pages, templates, helpers, and assets in their
+source directories.
+
+SMGen refuses an output path that is a symbolic link, contains the project
+root, or contains a configured source directory. It creates the replacement in
+a temporary sibling directory so the final rename stays on the same
+filesystem.
