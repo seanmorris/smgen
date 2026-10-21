@@ -568,6 +568,36 @@ EOF
 	assert_file_excludes "${DEBUG_DIR}/${CURRENT_TEST}.log" 'unbound variable'
 }
 
+test_build_uses_portable_mktemp_templates()
+{
+	begin_test "portable-mktemp-templates"
+	local site fake_bin real_mktemp
+	site="$(make_temp_site)"
+	CURRENT_SITE="${site}"
+	printf '%s\n' '---' 'title: Second' '---' '' '# Second' > "${site}/pages/second.md"
+	fake_bin="${TEMP_ROOT}/portable-mktemp-bin"
+	real_mktemp="$(command -v mktemp)"
+	mkdir -p "${fake_bin}"
+	cat > "${fake_bin}/mktemp" <<'EOF'
+#!/usr/bin/env bash
+template=${!#}
+if [[ ${template} != *X ]]; then
+	echo "mktemp template must end in X: ${template}" >&2
+	exit 64
+fi
+exec "${REAL_MKTEMP}" "$@"
+EOF
+	chmod +x "${fake_bin}/mktemp"
+
+	(
+		cd "${site}"
+		PATH="${fake_bin}:${PATH}" REAL_MKTEMP="${real_mktemp}" "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}.log" 2>&1
+	)
+
+	assert_file_exists "${site}/docs/index.html"
+	assert_file_exists "${site}/docs/second.html"
+}
+
 test_page_argument_still_rebuilds_the_complete_site()
 {
 	begin_test "page-argument-full-build"
@@ -1030,6 +1060,7 @@ main()
 	test_successful_build_replaces_the_complete_output
 	test_failed_build_preserves_previous_output
 	test_early_build_failure_reports_original_error
+	test_build_uses_portable_mktemp_templates
 	test_page_argument_still_rebuilds_the_complete_site
 	test_hooks_run_and_after_failure_rolls_back
 	test_custom_template_directory_is_supported

@@ -578,7 +578,7 @@ build_site()
 		if [ -z "${toc_value}" ] || [ "${toc_value}" = "null" ]; then
 			toc_value=true
 		fi
-		template_file=$(mktemp "${WORK_DIR}/template.XXXXXX.html")
+		template_file=$(mktemp "${WORK_DIR}/template.XXXXXX")
 
 		CURRENT_PAGE="/${destination}" \
 		SMGEN_PAGE_FILE="${page_file}" \
