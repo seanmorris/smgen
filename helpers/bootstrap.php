@@ -7,12 +7,13 @@ $frontmatter = $pageFile && is_file($pageFile) ? parsePageFrontmatter($pageFile)
 
 $projectHelpersDir = getenv('SMGEN_PROJECT_HELPERS_DIR') ?: './helpers';
 $projectNavbar = rtrim($projectHelpersDir, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'navbar.php';
+$coreNavbar = __DIR__ . '/navbar.php';
 
-if(is_file($projectNavbar))
+if(is_file($projectNavbar) && realpath($projectNavbar) !== realpath($coreNavbar))
 {
 	require($projectNavbar);
 }
-require(__DIR__ . '/navbar.php');
+require_once($coreNavbar);
 
 function resolveTemplateInclude($path)
 {
