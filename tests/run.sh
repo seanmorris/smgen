@@ -107,6 +107,7 @@ make_temp_site()
 	mkdir -p "${temp_dir}/docs" "${temp_dir}/pages" "${temp_dir}/static" "${temp_dir}/templates"
 	cp "${ROOT_DIR}/templates/"*.php "${temp_dir}/templates/"
 	cp -Rp "${ROOT_DIR}/static/." "${temp_dir}/static/"
+	rm -f "${temp_dir}/static/archive.css"
 	cp "${ROOT_DIR}/.smgen-rc-default" "${temp_dir}/.smgen-rc"
 	printf '%s\n' '---' 'title: Home' '---' '' '# Hello' > "${temp_dir}/pages/index.md"
 	echo "${temp_dir}"
@@ -143,6 +144,7 @@ EOF
 	assert_file_exists "${site}/public/index.html"
 	assert_file_exists "${site}/static/vendor/smgen-search/SearchReader.mjs"
 	assert_file_contains "${site}/public/index.html" 'Initialized'
+	assert_file_missing "${site}/public/archive.css"
 }
 
 test_default_build_generates_expected_output()
@@ -162,6 +164,8 @@ test_default_build_generates_expected_output()
 	assert_file_missing "${site}/docs/sitemap.xml "
 	assert_file_contains "${site}/docs/index.html" "<!DOCTYPE HTML>"
 	assert_file_contains "${site}/docs/sitemap.xml" "<urlset"
+	assert_file_excludes "${site}/docs/index.html" '/archive.css'
+	assert_file_missing "${site}/docs/archive.css"
 }
 
 test_custom_output_dir_builds_and_links_sitemap()
@@ -688,6 +692,7 @@ NAVIGATION_WIDGETS=$(cat <<-END
 END
 )
 EOF
+	rm -f "${site}/static/archive.css"
 
 	cat > "${site}/pages/latest.md" <<'EOF'
 ---
@@ -742,6 +747,8 @@ EOF
 	)
 
 	assert_file_contains "${site}/docs/index.html" 'aria-label="Publication timeline"'
+	assert_file_contains "${site}/docs/index.html" 'href="https://example.test/blog/archive.css"'
+	assert_file_exists "${site}/docs/archive.css"
 	assert_file_contains "${site}/docs/index.html" 'class="archive-calendar"'
 	assert_file_contains "${site}/docs/index.html" '>October 2026 publication calendar</caption>'
 	assert_file_contains "${site}/docs/index.html" 'data-id-path="archive-2026"'
@@ -759,6 +766,8 @@ EOF
 	assert_file_contains "${site}/docs/older.html" '<details open data-id-path="archive-2025-05"'
 	assert_file_contains "${site}/docs/older.html" 'aria-current="date"'
 	assert_file_contains "${site}/docs/older.html" 'class="active-link" aria-current="page"'
+	assert_file_excludes "${site}/docs/older.html" 'archive.js'
+	assert_file_excludes "${ROOT_DIR}/static/default.css" '.archive-calendar'
 }
 
 test_archive_navigation_rejects_invalid_dates()

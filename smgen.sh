@@ -119,6 +119,29 @@ load_yaml_config()
 	done
 }
 
+list_has_value()
+{
+	local values=$1
+	local expected=$2
+	local value
+
+	while IFS= read -r value; do
+		[ "${value}" != "${expected}" ] || return 0
+	done <<< "${values}"
+	return 1
+}
+
+configure_navigation_assets()
+{
+	list_has_value "${NAVIGATION_WIDGETS}" archive || return 0
+	list_has_value "${STYLES}" /archive.css && return 0
+
+	if [ -n "${STYLES}" ]; then
+		STYLES+=$'\n'
+	fi
+	STYLES+="/archive.css"
+}
+
 load_config()
 {
 	set_config_defaults
@@ -164,6 +187,11 @@ load_config()
 		if [ "${CALLER_CONFIG_SET[${CONFIG_KEY}]:-}" = "1" ]; then
 			printf -v "${CONFIG_KEY}" '%s' "${CALLER_CONFIG_VALUE[${CONFIG_KEY}]}"
 		fi
+	done
+
+	configure_navigation_assets
+
+	for CONFIG_KEY in "${CONFIG_KEYS[@]}"; do
 		export "${CONFIG_KEY}=${!CONFIG_KEY}"
 	done
 
@@ -402,6 +430,16 @@ prepare_search_reader()
 	fi
 }
 
+prepare_navigation_assets()
+{
+	local destination_dir=$1
+
+	list_has_value "${NAVIGATION_WIDGETS}" archive || return 0
+	if [ ! -f "${destination_dir}/archive.css" ]; then
+		cp "${SMGEN_CORE_STATIC_DIR}/archive.css" "${destination_dir}/archive.css"
+	fi
+}
+
 build_site()
 {
 	local requested_path=${1:-}
@@ -465,6 +503,7 @@ build_site()
 		copy_static_tree "${SMGEN_CORE_STATIC_DIR}" "${BUILD_DIR}"
 	fi
 	copy_static_tree "${STATIC_DIR}" "${BUILD_DIR}"
+	prepare_navigation_assets "${BUILD_DIR}"
 	prepare_search_reader "${BUILD_DIR}"
 
 	NAV_DATA_FILE="${WORK_DIR}/navigation.json"

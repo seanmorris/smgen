@@ -262,7 +262,7 @@ NAVIGATION_WIDGETS:
 ARCHIVE_TITLE: Timeline
 ```
 
-Pages with a `date` value appear in an expandable year/month timeline with a calendar above it. Set `archive: false` on a dated page to omit it. The build precomputes the hierarchy, counts, and calendar links; the browser uses native `<details>` elements for expansion.
+Pages with a `date` value appear in an expandable year/month timeline with a calendar above it. Set `archive: false` on a dated page to omit it. The build precomputes the hierarchy, counts, and calendar links; the browser uses native `<details>` elements for expansion. SMGen copies and links `archive.css` only when this widget is enabled and adds no archive-specific JavaScript.
 
 ### Examples
 

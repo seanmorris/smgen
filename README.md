@@ -244,7 +244,7 @@ leftBarLink: false
 ---
 ```
 
-Any dated page is included unless its front matter sets `archive: false`. Archive data, calendar markup, and hierarchy are generated during the build. Expansion uses native HTML `<details>`, so the widget performs no runtime data request and requires no additional JavaScript.
+Any dated page is included unless its front matter sets `archive: false`. Archive data, calendar markup, and hierarchy are generated during the build. Expansion uses native HTML `<details>`, so the widget performs no runtime data request and requires no additional JavaScript. Its small `archive.css` stylesheet is copied and linked only when the `archive` widget is enabled.
 
 ## Syntax Highlighting
 

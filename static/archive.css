@@ -1,0 +1,117 @@
+.navigation-widget-title {
+	font-size: 1rem;
+	line-height: 1.2;
+	margin: 0 0 0.75rem;
+}
+
+.navigation-widget + .navigation-widget {
+	border-top: 1px solid var(--border, currentColor);
+	margin-top: 1rem;
+	padding-top: 1rem;
+}
+
+.archive-calendar {
+	font-variant-numeric: tabular-nums;
+	margin-bottom: 1rem;
+}
+
+.archive-calendar-heading {
+	display: grid;
+	grid-template-columns: 1.5rem 1fr 1.5rem;
+	align-items: center;
+	margin-bottom: 0.35rem;
+	text-align: center;
+}
+
+.archive-calendar-heading a {
+	font-size: 1.25rem;
+	line-height: 1.5rem;
+}
+
+.archive-calendar table {
+	border-collapse: collapse;
+	table-layout: fixed;
+	width: 100%;
+}
+
+.archive-calendar th,
+.archive-calendar td {
+	font-size: 0.75rem;
+	font-weight: normal;
+	height: 1.65rem;
+	padding: 0;
+	text-align: center;
+	width: calc(100% / 7);
+}
+
+.archive-calendar abbr {
+	text-decoration: none;
+}
+
+.archive-calendar td > span,
+.archive-calendar td > a {
+	display: block;
+	line-height: 1.65rem;
+	position: relative;
+}
+
+.archive-calendar td:not(.has-posts) > span {
+	opacity: 0.5;
+}
+
+.archive-calendar td.has-posts > a {
+	border-radius: 50%;
+	font-weight: 700;
+}
+
+.archive-calendar td.has-posts > a:hover,
+.archive-calendar td.has-posts > a[aria-current="date"] {
+	background: var(--primary);
+	color: var(--primary-contrast);
+	text-decoration: none;
+}
+
+.archive-day-count {
+	font-size: 0.55rem;
+	line-height: 1;
+	position: absolute;
+	right: 0;
+	top: 0;
+}
+
+.archive-timeline,
+.archive-timeline ul {
+	margin: 0;
+}
+
+.archive-timeline details > ul {
+	padding-left: 0.75rem;
+}
+
+.archive-timeline a {
+	display: grid;
+	gap: 0.5rem;
+	grid-template-columns: 1.5rem minmax(0, 1fr);
+	white-space: normal;
+}
+
+.archive-timeline time,
+.archive-count {
+	font-variant-numeric: tabular-nums;
+	opacity: 0.7;
+}
+
+.archive-count {
+	float: right;
+	margin-left: 0.5rem;
+}
+
+.visually-hidden {
+	clip: rect(0 0 0 0);
+	clip-path: inset(50%);
+	height: 1px;
+	overflow: hidden;
+	position: absolute;
+	white-space: nowrap;
+	width: 1px;
+}
