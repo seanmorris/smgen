@@ -255,6 +255,7 @@ a.logo:hover {
 
 a.logo img.logo-image {
 	width: 6rem;
+	height: auto;
 	margin: auto;
 	margin-right: 1rem;
 }

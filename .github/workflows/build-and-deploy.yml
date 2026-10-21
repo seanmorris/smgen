@@ -55,6 +55,7 @@ jobs:
         with:
           name: validation-diagnostics-${{ matrix.os }}
           if-no-files-found: ignore
+          include-hidden-files: true
           path: .ci-debug/**
 
   deploy:

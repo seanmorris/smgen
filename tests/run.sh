@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -euo pipefail
+set -Eeuo pipefail
 
 ROOT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )/.." &> /dev/null && pwd )"
 SMGEN="${ROOT_DIR}/smgen.sh"
@@ -45,6 +45,33 @@ collect_debug()
 		cp -pr "${CURRENT_SITE}/." "${target_dir}/site/"
 	fi
 }
+
+report_unexpected_failure()
+{
+	local status=$?
+	local log
+	local marker="${DEBUG_DIR}/.${CURRENT_TEST:-test-setup}.reported"
+	local -a logs=()
+
+	trap - ERR
+	set +e
+	if [ -e "${marker}" ]; then
+		exit "${status}"
+	fi
+	: > "${marker}"
+	collect_debug
+	echo "FAIL: ${CURRENT_TEST:-test setup} exited with status ${status}" >&2
+	shopt -s nullglob
+	logs=("${DEBUG_DIR}/${CURRENT_TEST}"*.log)
+	shopt -u nullglob
+	for log in "${logs[@]}"; do
+		echo "--- ${log} ---" >&2
+		cat "${log}" >&2
+	done
+	exit "${status}"
+}
+
+trap report_unexpected_failure ERR
 
 fail()
 {
@@ -921,12 +948,12 @@ EOF
 	assert_file_excludes "${site}/pages/undated.md" 'modified:'
 	assert_file_contains "${site}/docs/sitemap.xml" '<lastmod>2024-05-06</lastmod>'
 
-	checksum="$(sha256sum "${site}/pages/undated.md")"
+	checksum="$(cksum "${site}/pages/undated.md")"
 	(
 		cd "${site}"
 		"${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-second.log" 2>&1
 	)
-	[ "${checksum}" = "$(sha256sum "${site}/pages/undated.md")" ] || fail "timeline timestamp backfill was not idempotent"
+	[ "${checksum}" = "$(cksum "${site}/pages/undated.md")" ] || fail "timeline timestamp backfill was not idempotent"
 }
 
 test_named_menu_validation_preserves_output()
@@ -981,6 +1008,12 @@ test_external_links_use_noopener()
 	assert_file_contains "${ROOT_DIR}/static/main.js" "window.open(href, '_blank', 'noopener,noreferrer');"
 }
 
+test_logo_preserves_its_aspect_ratio()
+{
+	begin_test "logo-aspect-ratio"
+	assert_file_contains "${ROOT_DIR}/static/default.css" $'a.logo img.logo-image {\n\twidth: 6rem;\n\theight: auto;'
+}
+
 main()
 {
 	test_init_creates_a_buildable_project
@@ -1008,6 +1041,7 @@ main()
 	test_named_menus_plugins_and_timeline_backfill
 	test_named_menu_validation_preserves_output
 	test_external_links_use_noopener
+	test_logo_preserves_its_aspect_ratio
 
 	echo "PASS: all tests"
 }

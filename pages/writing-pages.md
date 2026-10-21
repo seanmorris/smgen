@@ -154,7 +154,7 @@ Directory fields include:
 - `weight`: numeric group order.
 - `open`: initial expansion state. Default: `true`.
 - `leftBarLink`: include the directory and its descendants in legacy navigation.
-- `menus`: named tree menus that receive the directory as a group.
+- `menus`: named flat or tree menus that receive the directory as a group.
 
 A `.fm.yaml` file may contain a plain YAML mapping or use page-style opening and
 closing `---` markers.
