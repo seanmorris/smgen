@@ -2,6 +2,6 @@
   "name": "smgen-docs",
   "private": true,
   "devDependencies": {
-    "smgen-assistant": "https://github.com/seanmorris/smgen-assistant/releases/download/v0.1.5/smgen-assistant-0.1.5.tgz"
+    "smgen-assistant": "https://github.com/seanmorris/smgen-assistant/releases/download/v0.1.6/smgen-assistant-0.1.6.tgz"
   }
 }
