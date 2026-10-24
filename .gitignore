@@ -1,4 +1,5 @@
 docs/
+/.docs.smgen-*/
 test/
 test2/
 .env
