@@ -1,6 +1,7 @@
 <?php
 require(__DIR__ . '/getConf.php');
 require(__DIR__ . '/frontmatter.php');
+require(__DIR__ . '/rss-lib.php');
 
 $pageFile = getenv('SMGEN_PAGE_FILE') ?: ($argv[1] ?? null);
 $frontmatter = $pageFile && is_file($pageFile) ? parsePageFrontmatter($pageFile) : [];

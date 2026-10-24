@@ -9,7 +9,7 @@ author:
 
 SMGen converts Markdown into a static HTML site. Pandoc renders the content,
 PHP templates provide the page structure, and Bash coordinates configuration,
-assets, navigation, search, and sitemap generation.
+assets, navigation, RSS feeds, search, and sitemap generation.
 
 ## Requirements
 
@@ -100,5 +100,6 @@ smgen watch
 - [CLI Reference](cli.html): every command and its requirements
 - [Configuration](configuration.html): precedence, defaults, assets, paths, and search
 - [Navigation and Plugins](navigation.html): menus, regions, timelines, and plugins
+- [RSS Feeds](rss.html): named feeds, page membership, dates, and output
 - [Customization](customization.html): templates, themes, and injected assets
 - [Deployment](deployment.html): static hosting and GitHub Pages

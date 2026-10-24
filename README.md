@@ -14,6 +14,7 @@ SMGen supports:
 - PHP and Pandoc templates
 - named menus with flat, tree, and timeline renderers
 - ordered menu plugins and alter hooks
+- named RSS 2.0 feeds selected through page frontmatter
 - sitemap generation
 - optional local search through `smgen-search`
 - atomic output replacement with rollback after failed builds
@@ -101,10 +102,10 @@ smgen help                Show command help
 ```
 
 `smgen build <path>` validates the requested page but still rebuilds every
-page. Navigation, sitemap data, and cross-page metadata therefore remain
-consistent. SMGen renders into a temporary sibling directory and replaces the
-output only after generation succeeds. If an after-build hook fails, SMGen
-restores the previous output.
+page. Navigation, RSS feeds, sitemap data, and cross-page metadata therefore
+remain consistent. SMGen renders into a temporary sibling directory and
+replaces the output only after generation succeeds. If an after-build hook
+fails, SMGen restores the previous output.
 
 ## Documentation
 
@@ -115,6 +116,7 @@ The hosted documentation is the canonical reference:
 - [CLI Reference](https://seanmorris.github.io/smgen/cli.html)
 - [Configuration](https://seanmorris.github.io/smgen/configuration.html)
 - [Navigation and Plugins](https://seanmorris.github.io/smgen/navigation.html)
+- [RSS Feeds](https://seanmorris.github.io/smgen/rss.html)
 - [Customization](https://seanmorris.github.io/smgen/customization.html)
 - [Deployment](https://seanmorris.github.io/smgen/deployment.html)
 - [FAQ and Troubleshooting](https://seanmorris.github.io/smgen/faq.html)
@@ -133,7 +135,7 @@ bash ./tests/run.sh
 
 The regression suite covers configuration precedence, frontmatter, templates,
 output rollback, hooks, path safety, static assets, search, sitemap output,
-legacy navigation, named menus, plugins, and timeline dates.
+RSS output, legacy navigation, named menus, plugins, and timeline dates.
 
 ## License
 

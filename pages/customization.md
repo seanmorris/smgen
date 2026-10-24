@@ -160,9 +160,9 @@ Both paths must resolve inside `TEMPLATE_DIR`.
 ## Override Helpers
 
 Set `HELPERS_DIR` to a project helper directory. SMGen checks it for
-`domain.lua`, `navigation-data.php`, and `sitemap.php` before using the built-in
-versions. A project `navbar.php` may define a legacy `renderNavBar()` while the
-core named-menu functions remain available.
+`domain.lua`, `navigation-data.php`, `rss.php`, and `sitemap.php` before using
+the built-in versions. A project `navbar.php` may define a legacy
+`renderNavBar()` while the core named-menu functions remain available.
 
 Helper overrides execute as part of the build and receive the same environment
 as their built-in counterparts. Keep their output deterministic so a complete

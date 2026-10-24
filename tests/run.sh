@@ -198,6 +198,7 @@ test_default_build_generates_expected_output()
 	assert_file_exists "${site}/docs/default.css"
 	assert_file_exists "${site}/docs/main.js"
 	assert_file_excludes "${site}/docs/index.html" '/archive.css'
+	assert_file_excludes "${site}/docs/index.html" 'application/rss+xml'
 	assert_file_missing "${site}/docs/archive.css"
 }
 
@@ -330,6 +331,11 @@ EOF
 echo "<custom-sitemap />\n";
 EOF
 
+	cat > "${site}/helpers/rss.php" <<'EOF'
+<?php
+file_put_contents($argv[2] . '/custom.xml', "<custom-rss />\n");
+EOF
+
 	cat > "${site}/helpers/domain.lua" <<'EOF'
 function Image (el)
 	return el
@@ -346,6 +352,14 @@ title: Home
 ![](logo.png)
 EOF
 
+	cat > "${site}/.smgen.yaml" <<'EOF'
+RSS_FEEDS:
+  custom:
+    path: /custom.xml
+    title: Custom feed
+    description: Custom feed description
+EOF
+
 	printf '%s\n' '<svg xmlns="http://www.w3.org/2000/svg"></svg>' > "${site}/static/logo.png"
 
 	(
@@ -355,6 +369,7 @@ EOF
 
 	assert_file_contains "${site}/docs/index.html" 'id="custom-navbar"'
 	assert_file_contains "${site}/docs/sitemap.xml" '<custom-sitemap />'
+	assert_file_contains "${site}/docs/custom.xml" '<custom-rss />'
 	assert_file_contains "${site}/docs/index.html" 'src="logo.png"'
 }
 
@@ -739,6 +754,213 @@ EOF
 	assert_file_excludes "${site}/docs/index.html" '<script>alert(1)</script>'
 }
 
+test_named_rss_feeds_use_page_flags_and_dates()
+{
+	begin_test "named-rss-feeds"
+	local site item_count latest_line created_line
+	site="$(make_temp_site)"
+	CURRENT_SITE="${site}"
+
+	cat > "${site}/.smgen.yaml" <<'EOF'
+RSS_FEEDS:
+  main:
+    path: /feed.xml
+    title: Main & Updates
+    description: Recent articles & notes
+    link: /news/
+    language: en-us
+    limit: 2
+  releases:
+    path: /feeds/releases.xml
+    title: Releases
+    description: Every release
+    limit: 0
+EOF
+	cat > "${site}/pages/index.md" <<'EOF'
+---
+title: Home
+date: 2026-10-20
+feeds: [main]
+---
+
+# Home
+EOF
+	cat > "${site}/pages/latest update.md" <<'EOF'
+---
+title: Latest & greatest
+description-meta: "Latest & <safe>"
+date: 2026-10-24T12:30:00-04:00
+feeds:
+  main: true
+  releases: true
+---
+
+# Latest
+EOF
+	cat > "${site}/pages/created.md" <<'EOF'
+---
+title: Created date
+created: 2026-10-23
+feeds: [main, releases]
+---
+
+# Created
+EOF
+	cat > "${site}/pages/older.md" <<'EOF'
+---
+title: Older release
+date: 2025-05-04
+feeds: [main, releases]
+---
+
+# Older
+EOF
+	cat > "${site}/pages/disabled.md" <<'EOF'
+---
+title: Disabled
+feeds:
+  main: false
+---
+
+# Disabled
+EOF
+	cat > "${site}/pages/unlisted.md" <<'EOF'
+---
+title: Unlisted
+date: 2026-10-24
+archive: false
+---
+
+# Unlisted
+EOF
+
+	(
+		cd "${site}"
+		BASE_URL=https://example.test/blog "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}.log" 2>&1
+	)
+
+	assert_file_exists "${site}/docs/feed.xml"
+	assert_file_exists "${site}/docs/feeds/releases.xml"
+	assert_file_contains "${site}/docs/index.html" 'type="application/rss+xml" title="Main &amp; Updates" href="https://example.test/blog/feed.xml"'
+	assert_file_contains "${site}/docs/index.html" 'type="application/rss+xml" title="Releases" href="https://example.test/blog/feeds/releases.xml"'
+	assert_file_contains "${site}/docs/feed.xml" '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">'
+	assert_file_contains "${site}/docs/feed.xml" '<title>Main &amp; Updates</title>'
+	assert_file_contains "${site}/docs/feed.xml" '<link>https://example.test/blog/news/</link>'
+	assert_file_contains "${site}/docs/feed.xml" '<atom:link href="https://example.test/blog/feed.xml" rel="self" type="application/rss+xml" />'
+	assert_file_contains "${site}/docs/feed.xml" '<language>en-us</language>'
+	assert_file_contains "${site}/docs/feed.xml" '<lastBuildDate>Sat, 24 Oct 2026 16:30:00 +0000</lastBuildDate>'
+	assert_file_contains "${site}/docs/feed.xml" '<title>Latest &amp; greatest</title>'
+	assert_file_contains "${site}/docs/feed.xml" '<link>https://example.test/blog/latest%20update.html</link>'
+	assert_file_contains "${site}/docs/feed.xml" '<pubDate>Sat, 24 Oct 2026 16:30:00 +0000</pubDate>'
+	assert_file_contains "${site}/docs/feed.xml" '<description>Latest &amp; &lt;safe&gt;</description>'
+	assert_file_contains "${site}/docs/feed.xml" '<title>Created date</title>'
+	assert_file_excludes "${site}/docs/feed.xml" 'Older release'
+	assert_file_excludes "${site}/docs/feed.xml" '<title>Home</title>'
+	assert_file_excludes "${site}/docs/feed.xml" 'Disabled'
+	assert_file_excludes "${site}/docs/feed.xml" 'Unlisted'
+	assert_file_contains "${site}/docs/feeds/releases.xml" '<title>Older release</title>'
+	assert_file_excludes "${site}/docs/feeds/releases.xml" '<title>Home</title>'
+	item_count="$(grep -c '<item>' "${site}/docs/feed.xml")"
+	[ "${item_count}" -eq 2 ] || fail "expected two items in limited RSS feed, found ${item_count}"
+	latest_line="$(grep -n -m1 '<title>Latest &amp; greatest</title>' "${site}/docs/feed.xml" | cut -d: -f1)"
+	created_line="$(grep -n -m1 '<title>Created date</title>' "${site}/docs/feed.xml" | cut -d: -f1)"
+	[ "${latest_line}" -lt "${created_line}" ] || fail "expected RSS items to sort from newest to oldest"
+}
+
+test_rss_validation_preserves_sources_and_output()
+{
+	begin_test "rss-validation"
+	local site checksum
+	site="$(make_temp_site)"
+	CURRENT_SITE="${site}"
+	(
+		cd "${site}"
+		"${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-first.log" 2>&1
+	)
+
+	cat > "${site}/.smgen.yaml" <<'EOF'
+RSS_FEEDS:
+  main:
+    path: /feed.xml
+    title: Main feed
+    description: Recent pages
+EOF
+	cat > "${site}/pages/index.md" <<'EOF'
+---
+title: Replacement
+feeds: [main]
+---
+
+# Replacement
+EOF
+	checksum="$(cksum "${site}/pages/index.md")"
+	(
+		cd "${site}"
+		assert_command_fails "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-missing-date.log" 2>&1
+	)
+	assert_file_contains "${DEBUG_DIR}/${CURRENT_TEST}-missing-date.log" 'RSS page requires date or created'
+	assert_file_contains "${site}/docs/index.html" '<h1 id="hello">Hello</h1>'
+	assert_file_missing "${site}/docs/feed.xml"
+	assert_file_excludes "${site}/pages/index.md" 'created:'
+	[ "${checksum}" = "$(cksum "${site}/pages/index.md")" ] || fail "RSS validation changed the source page"
+
+	cat > "${site}/pages/index.md" <<'EOF'
+---
+title: Replacement
+date: 2026-10-24
+feeds: [unknown]
+---
+
+# Replacement
+EOF
+	(
+		cd "${site}"
+		assert_command_fails "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-unknown.log" 2>&1
+	)
+	assert_file_contains "${DEBUG_DIR}/${CURRENT_TEST}-unknown.log" 'Unknown RSS feed unknown'
+	assert_file_contains "${site}/docs/index.html" '<h1 id="hello">Hello</h1>'
+
+	cat > "${site}/pages/index.md" <<'EOF'
+---
+title: Replacement
+date: 2026-10-24
+feeds:
+  main:
+---
+
+# Replacement
+EOF
+	(
+		cd "${site}"
+		assert_command_fails "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-membership.log" 2>&1
+	)
+	assert_file_contains "${DEBUG_DIR}/${CURRENT_TEST}-membership.log" 'RSS feed membership must be true or false'
+	assert_file_contains "${site}/docs/index.html" '<h1 id="hello">Hello</h1>'
+
+	cat > "${site}/.smgen.yaml" <<'EOF'
+RSS_FEEDS:
+  main:
+    path: /sitemap.xml
+    title: Main feed
+    description: Recent pages
+EOF
+	cat > "${site}/pages/index.md" <<'EOF'
+---
+title: Replacement
+date: 2026-10-24
+feeds: [main]
+---
+
+# Replacement
+EOF
+	(
+		cd "${site}"
+		assert_command_fails "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-collision.log" 2>&1
+	)
+	assert_file_contains "${DEBUG_DIR}/${CURRENT_TEST}-collision.log" 'RSS feed path collides with existing output'
+	assert_file_contains "${site}/docs/index.html" '<h1 id="hello">Hello</h1>'
+}
+
 test_archive_navigation_builds_static_calendar_and_timeline()
 {
 	begin_test "archive-navigation"
@@ -1067,6 +1289,8 @@ main()
 	test_unsafe_output_and_core_asset_paths_are_rejected
 	test_search_is_optional_local_and_lazy
 	test_sitemap_encodes_paths_and_navigation_escapes_titles
+	test_named_rss_feeds_use_page_flags_and_dates
+	test_rss_validation_preserves_sources_and_output
 	test_archive_navigation_builds_static_calendar_and_timeline
 	test_archive_navigation_rejects_invalid_dates
 	test_named_menus_plugins_and_timeline_backfill

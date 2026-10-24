@@ -33,6 +33,7 @@ const DEFAULTS = [
 	'PLUGINS' => [],
 	'MENUS' => [],
 	'MENU_REGIONS' => [],
+	'RSS_FEEDS' => [],
 ];
 
 const LIST_CONFIG_KEYS = [

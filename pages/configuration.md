@@ -57,9 +57,10 @@ form is accepted.
 - `HELPERS_DIR`: project helper override directory. Default: `./helpers`.
 
 All relative paths resolve from the current working directory. Project copies
-of `domain.lua`, `navigation-data.php`, `sitemap.php`, and `navbar.php` can
-override their documented core behavior through `HELPERS_DIR`. Template
-selection and asset copying reject paths that escape their configured roots.
+of `domain.lua`, `navigation-data.php`, `rss.php`, `sitemap.php`, and
+`navbar.php` can override their documented core behavior through
+`HELPERS_DIR`. Template selection and asset copying reject paths that escape
+their configured roots.
 
 ## Styles and Scripts
 
@@ -146,6 +147,26 @@ sequence or newline-separated shell value.
 `MENUS` and `MENU_REGIONS` are structured mappings and belong in
 `.smgen.yaml` or an environment-specific YAML file. See
 [Navigation and Plugins](navigation.html) for their schema and rendering API.
+
+## RSS Feeds
+
+`RSS_FEEDS` is a mapping of named RSS 2.0 feeds. Define it in `.smgen.yaml` or
+an environment-specific YAML file. Each definition requires `title` and
+`description`. It may also set `path`, `link`, `language`, and `limit`.
+
+```yaml
+RSS_FEEDS:
+  main:
+    path: /rss.xml
+    title: Example Site
+    description: Recent articles
+    link: /
+    language: en-us
+    limit: 20
+```
+
+See [RSS Feeds](rss.html) for feed definitions, page membership, and date
+handling.
 
 ## Executables and Proofreading
 

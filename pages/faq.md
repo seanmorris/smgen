@@ -51,6 +51,17 @@ validation succeeds. Supply either field yourself to prevent that write.
 
 SMGen does not generate `modified`.
 
+RSS selection does not trigger this source edit. A page selected into an RSS
+feed must supply `date` or `created` in its frontmatter.
+
+## Why does an RSS feed fail to build?
+
+Check that every name under the page's `feeds` field exists in `RSS_FEEDS`.
+Each selected page needs a valid `date` or `created` value. Feed output paths
+must end in `.xml` and cannot replace a page, static asset, or sitemap file.
+
+See [RSS Feeds](rss.html) for the configuration and frontmatter formats.
+
 ## Why did a failed build leave the old site in place?
 
 SMGen renders the complete site in a temporary directory. It replaces

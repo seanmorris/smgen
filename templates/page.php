@@ -38,6 +38,9 @@ $endif$
 	<meta name="title" content="$if(pagetitle)$${pagetitle}$else$${title}$endif$">
 	<link rel="icon" type="image/png" href="<?=escapeHtml(resolveAssetUrl('/icon-16.png'))?>">
 	<link rel="sitemap" href="<?=escapeHtml(resolveAssetUrl('/sitemap.xml'))?>" />
+<?php foreach(rssFeedDefinitions() as $rssFeed): ?>
+	<link rel="alternate" type="application/rss+xml" title="<?=escapeHtml($rssFeed['title']);?>" href="<?=escapeHtml(resolveAssetUrl($rssFeed['path']));?>" />
+<?php endforeach; ?>
 <?php if(staticAssetExists('/logo.svg')): ?>
 	<link rel="preload" href="<?=escapeHtml(resolveAssetUrl('/logo.svg'))?>" as="image" type="image/svg">
 <?php endif; ?>

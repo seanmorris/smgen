@@ -41,6 +41,7 @@ date: 2026-10-21
 created: 2026-10-20T15:30:00Z
 modified: 2026-10-22T09:00:00Z
 archive: true
+feeds: [main, releases]
 menus:
   documentation: true
 ---
@@ -61,6 +62,7 @@ SMGen-specific page fields include:
 - `created`: creation date used when `date` is absent.
 - `modified`: optional override for sitemap `lastmod`.
 - `archive`: include a dated page in the legacy archive. Default: `true`.
+- `feeds`: named RSS feed memberships as a list or boolean mapping.
 - `menus`: named menu memberships and per-menu link settings.
 
 The default template also uses Pandoc metadata such as `pagetitle`, `author`,
@@ -100,7 +102,7 @@ membership for that page.
 See [Navigation and Plugins](navigation.html) for menu definitions, link IDs,
 regions, plugins, and renderers.
 
-## Timeline and Sitemap Dates
+## Publication and Sitemap Dates
 
 A timeline menu uses `date`, then `created`. When a selected page has neither,
 SMGen derives a creation time and writes it to the page as `created`. The build
@@ -113,6 +115,9 @@ time.
 
 Legacy archive membership requires `date`. A page selected explicitly into a
 named timeline may use `created` or the generated fallback instead.
+
+RSS feeds also use `date`, then `created`. An RSS selection never derives or
+writes a timestamp. A selected page without either field fails the build.
 
 ## Markdown
 

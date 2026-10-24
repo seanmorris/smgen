@@ -614,6 +614,7 @@ build_site()
 
 	echo -e "\e[33;4mAssembling sitemap...\e[0m"
 	"${PHP}" "${php_args[@]}" "$(resolve_project_helper_path sitemap.php)" "${BASE_URL}" "${BUILD_DIR}" "${PAGE_MANIFEST}" > "${BUILD_DIR}/sitemap.xml"
+	"${PHP}" "${php_args[@]}" "$(resolve_project_helper_path rss.php)" "${BASE_URL}" "${BUILD_DIR}" "${PAGE_MANIFEST}"
 
 	if [ -e "${OUTPUT_ABS}" ]; then
 		backup_path=$(mktemp -d "${output_parent}/.${output_name}.smgen-backup.XXXXXX")

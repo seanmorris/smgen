@@ -59,8 +59,8 @@ smgen build pages/guide.md
 ```
 
 The optional path must resolve inside `PAGES_DIR`, but it does not limit the
-build. SMGen always refreshes every page, menu, sitemap entry, and search
-record.
+build. SMGen always refreshes every page, menu, RSS feed, sitemap entry, and
+search record.
 
 SMGen renders into a temporary directory beside `OUTPUT_DIR`. It replaces the
 previous output after every page succeeds. A render failure leaves the previous

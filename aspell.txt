@@ -158,3 +158,9 @@ svg
 vendored
 CDN
 Executables
+GUID
+permalink
+RSS
+rss
+rssFeedDefinitions
+xml
