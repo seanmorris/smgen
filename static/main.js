@@ -31,6 +31,18 @@ function flicker(element, timeout)
 	setTimeout(() => element.classList.remove('flickering'), timeout);
 }
 
+let mousedownNavigationAnchor;
+let dispatchingMousedownNavigation = false;
+
+document.addEventListener('click', event => {
+	const anchor = event.target.closest?.('a');
+	if(dispatchingMousedownNavigation || !anchor || anchor !== mousedownNavigationAnchor) return;
+
+	mousedownNavigationAnchor = null;
+	event.preventDefault();
+	event.stopImmediatePropagation();
+}, true);
+
 document.addEventListener('click', event => {
 	let target = event.target;
 	let href;
@@ -59,6 +71,41 @@ document.addEventListener('click', event => {
 
 		target = target.parentNode;
 	}
+});
+
+document.addEventListener('mousedown', event => {
+	if(event.defaultPrevented || event.button !== 0
+		|| event.ctrlKey || event.metaKey || event.shiftKey || event.altKey)
+	{
+		return;
+	}
+
+	const anchor = event.target.closest?.('a[href]');
+	if(!anchor) return;
+
+	event.preventDefault();
+	mousedownNavigationAnchor = anchor;
+	dispatchingMousedownNavigation = true;
+	try
+	{
+		anchor.click();
+	}
+	finally
+	{
+		dispatchingMousedownNavigation = false;
+	}
+});
+
+document.addEventListener('mouseup', () => {
+	if(!mousedownNavigationAnchor) return;
+	const anchor = mousedownNavigationAnchor;
+	setTimeout(() => {
+		if(mousedownNavigationAnchor === anchor) mousedownNavigationAnchor = null;
+	}, 0);
+}, true);
+
+window.addEventListener('blur', () => {
+	mousedownNavigationAnchor = null;
 });
 
 const prefetchedUrls = new Set();

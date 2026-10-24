@@ -1339,6 +1339,15 @@ test_external_links_use_noopener()
 	assert_file_contains "${ROOT_DIR}/static/main.js" "window.open(href, '_blank', 'noopener,noreferrer');"
 }
 
+test_primary_mousedown_starts_navigation()
+{
+	begin_test "primary-mousedown-navigation"
+	assert_file_contains "${ROOT_DIR}/static/main.js" "document.addEventListener('mousedown', event => {"
+	assert_file_contains "${ROOT_DIR}/static/main.js" 'event.button !== 0'
+	assert_file_contains "${ROOT_DIR}/static/main.js" 'event.ctrlKey || event.metaKey || event.shiftKey || event.altKey'
+	assert_file_contains "${ROOT_DIR}/static/main.js" 'anchor.click();'
+}
+
 test_logo_preserves_its_aspect_ratio()
 {
 	begin_test "logo-aspect-ratio"
@@ -1375,6 +1384,7 @@ main()
 	test_named_menus_plugins_and_timeline_backfill
 	test_named_menu_validation_preserves_output
 	test_external_links_use_noopener
+	test_primary_mousedown_starts_navigation
 	test_logo_preserves_its_aspect_ratio
 
 	echo "PASS: all tests"
