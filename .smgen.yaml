@@ -22,6 +22,9 @@ DEFER_SCRIPTS:
   - /search.js
   - /theme-variant.js
 
+BODY_SCRIPTS:
+  - /__smgen-assistant/loader.js
+
 SEARCH_ENABLED: 1
 SEARCH_READER: /vendor/smgen-search/SearchReader.mjs
 

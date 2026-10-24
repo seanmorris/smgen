@@ -20,6 +20,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+          cache: npm
+
       - name: Set up PHP
         uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
@@ -42,6 +48,9 @@ jobs:
 
       - name: Install search indexer
         run: npm install --global smgen-search@0.0.1
+
+      - name: Install project dependencies
+        run: npm ci
 
       - name: Run regression suite
         run: bash ./tests/run.sh
@@ -75,6 +84,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+          cache: npm
+
       - name: Set up PHP
         uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
@@ -96,6 +111,9 @@ jobs:
 
       - name: Install search indexer
         run: npm install --global smgen-search@0.0.1
+
+      - name: Install project dependencies
+        run: npm ci
 
       - name: Build site
         env:

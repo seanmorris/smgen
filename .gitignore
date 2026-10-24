@@ -4,3 +4,4 @@ test2/
 .env
 .agent-volumes
 .ci-debug/
+node_modules/
