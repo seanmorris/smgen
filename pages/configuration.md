@@ -152,7 +152,8 @@ sequence or newline-separated shell value.
 
 `RSS_FEEDS` is a mapping of named RSS 2.0 feeds. Define it in `.smgen.yaml` or
 an environment-specific YAML file. Each definition requires `title` and
-`description`. It may also set `path`, `link`, `language`, and `limit`.
+`description`. It may also set `path`, `link`, `language`, `limit`,
+`namespaces`, and `channel`.
 
 ```yaml
 RSS_FEEDS:
@@ -165,8 +166,8 @@ RSS_FEEDS:
     limit: 20
 ```
 
-See [RSS Feeds](rss.html) for feed definitions, page membership, and date
-handling.
+See [RSS Feeds](rss.html) for feed definitions, page membership, dates, and
+custom channel and item data.
 
 ## Executables and Proofreading
 

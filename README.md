@@ -14,7 +14,7 @@ SMGen supports:
 - PHP and Pandoc templates
 - named menus with flat, tree, and timeline renderers
 - ordered menu plugins and alter hooks
-- named RSS 2.0 feeds selected through page frontmatter
+- named RSS 2.0 feeds with YAML channel and item data
 - sitemap generation
 - optional local search through `smgen-search`
 - atomic output replacement with rollback after failed builds
@@ -30,12 +30,13 @@ Every build requires:
 - Pandoc
 
 `smgen init`, `smgen create-random-page`, and the installer also require
-`curl`. Optional commands use `inotify-tools`, `aspell`, and `smgen-search`.
+`curl`. RSS feed generation requires the PHP XMLWriter extension. Optional
+commands use `inotify-tools`, `aspell`, and `smgen-search`.
 
 On Debian or Ubuntu:
 
 ```bash
-apt install bash php php-yaml pandoc curl inotify-tools aspell
+apt install bash php php-yaml php-xml pandoc curl inotify-tools aspell
 
 YQ_VERSION=v4.47.2
 wget -qO /usr/local/bin/yq "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64"

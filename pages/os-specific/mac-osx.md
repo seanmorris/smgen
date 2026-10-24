@@ -18,7 +18,7 @@ that the active Bash is version 4 or newer:
 bash --version
 ```
 
-## Install PHP and YAML
+## Install PHP, YAML, and XMLWriter
 
 Homebrew's standard PHP formula does not include the YAML extension. Add
 shivammathur's PHP and extension taps:
@@ -39,11 +39,11 @@ brew link --overwrite --force shivammathur/php/php@8.4
 brew install shivammathur/extensions/yaml@8.4
 ```
 
-Verify both PHP and the extension:
+Homebrew PHP includes XMLWriter. Verify PHP and both extensions:
 
 ```bash
 php -v
-php -m | grep -i '^yaml$'
+php -m | grep -Ei '^(yaml|xmlwriter)$'
 ```
 
 ## Build Without the Watcher

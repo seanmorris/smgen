@@ -20,14 +20,14 @@ A build requires:
 - `yq` 4 from [mikefarah/yq](https://github.com/mikefarah/yq)
 - Pandoc
 
-The installer and `smgen init` also require `curl`. Install `inotify-tools` to
-use `smgen watch`, `aspell` to use `smgen proofread`, and `smgen-search` to
-build a search index.
+The installer and `smgen init` also require `curl`. RSS feed generation
+requires the PHP XMLWriter extension. Install `inotify-tools` for the watch
+command, `aspell` for proofreading, and `smgen-search` to build a search index.
 
 On Debian or Ubuntu:
 
 ```bash
-apt install bash php php-yaml pandoc curl inotify-tools aspell
+apt install bash php php-yaml php-xml pandoc curl inotify-tools aspell
 
 YQ_VERSION=v4.47.2
 wget -qO /usr/local/bin/yq "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64"

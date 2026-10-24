@@ -770,11 +770,22 @@ RSS_FEEDS:
     link: /news/
     language: en-us
     limit: 2
+    namespaces:
+      media: http://search.yahoo.com/mrss/
+    channel:
+      copyright: Copyright 2026 & later
+      category: [Engineering, Releases]
+      image:
+        url: https://example.test/feed.png
+        title: Main feed image
+        link: https://example.test/blog/news/
   releases:
     path: /feeds/releases.xml
     title: Releases
     description: Every release
     limit: 0
+    namespaces:
+      media: http://search.yahoo.com/mrss/
 EOF
 	cat > "${site}/pages/index.md" <<'EOF'
 ---
@@ -793,6 +804,21 @@ date: 2026-10-24T12:30:00-04:00
 feeds:
   main: true
   releases: true
+rss:
+  author: editor@example.test
+  category:
+    - _attributes:
+        domain: https://example.test/topics
+      _text: Release & notes
+  enclosure:
+    _attributes:
+      url: https://example.test/audio.mp3?one=1&two=2
+      length: 1234
+      type: audio/mpeg
+  media:content:
+    _attributes:
+      url: https://example.test/cover.jpg
+      medium: image
 ---
 
 # Latest
@@ -843,28 +869,43 @@ EOF
 	assert_file_exists "${site}/docs/feeds/releases.xml"
 	assert_file_contains "${site}/docs/index.html" 'type="application/rss+xml" title="Main &amp; Updates" href="https://example.test/blog/feed.xml"'
 	assert_file_contains "${site}/docs/index.html" 'type="application/rss+xml" title="Releases" href="https://example.test/blog/feeds/releases.xml"'
-	assert_file_contains "${site}/docs/feed.xml" '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">'
+	assert_file_contains "${site}/docs/feed.xml" '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/">'
 	assert_file_contains "${site}/docs/feed.xml" '<title>Main &amp; Updates</title>'
 	assert_file_contains "${site}/docs/feed.xml" '<link>https://example.test/blog/news/</link>'
-	assert_file_contains "${site}/docs/feed.xml" '<atom:link href="https://example.test/blog/feed.xml" rel="self" type="application/rss+xml" />'
+	assert_file_contains "${site}/docs/feed.xml" '<atom:link href="https://example.test/blog/feed.xml" rel="self" type="application/rss+xml"/>'
 	assert_file_contains "${site}/docs/feed.xml" '<language>en-us</language>'
+	assert_file_contains "${site}/docs/feed.xml" '<copyright>Copyright 2026 &amp; later</copyright>'
+	assert_file_contains "${site}/docs/feed.xml" '<category>Engineering</category>'
+	assert_file_contains "${site}/docs/feed.xml" '<category>Releases</category>'
+	assert_file_contains "${site}/docs/feed.xml" '<image>'
+	assert_file_contains "${site}/docs/feed.xml" '<url>https://example.test/feed.png</url>'
 	assert_file_contains "${site}/docs/feed.xml" '<lastBuildDate>Sat, 24 Oct 2026 16:30:00 +0000</lastBuildDate>'
 	assert_file_contains "${site}/docs/feed.xml" '<title>Latest &amp; greatest</title>'
 	assert_file_contains "${site}/docs/feed.xml" '<link>https://example.test/blog/latest%20update.html</link>'
 	assert_file_contains "${site}/docs/feed.xml" '<pubDate>Sat, 24 Oct 2026 16:30:00 +0000</pubDate>'
 	assert_file_contains "${site}/docs/feed.xml" '<description>Latest &amp; &lt;safe&gt;</description>'
+	assert_file_contains "${site}/docs/feed.xml" '<author>editor@example.test</author>'
+	assert_file_contains "${site}/docs/feed.xml" '<category domain="https://example.test/topics">Release &amp; notes</category>'
+	assert_file_contains "${site}/docs/feed.xml" '<enclosure url="https://example.test/audio.mp3?one=1&amp;two=2" length="1234" type="audio/mpeg"/>'
+	assert_file_contains "${site}/docs/feed.xml" '<media:content url="https://example.test/cover.jpg" medium="image"/>'
 	assert_file_contains "${site}/docs/feed.xml" '<title>Created date</title>'
 	assert_file_excludes "${site}/docs/feed.xml" 'Older release'
 	assert_file_excludes "${site}/docs/feed.xml" '<title>Home</title>'
 	assert_file_excludes "${site}/docs/feed.xml" 'Disabled'
 	assert_file_excludes "${site}/docs/feed.xml" 'Unlisted'
 	assert_file_contains "${site}/docs/feeds/releases.xml" '<title>Older release</title>'
+	assert_file_contains "${site}/docs/feeds/releases.xml" '<media:content url="https://example.test/cover.jpg" medium="image"/>'
 	assert_file_excludes "${site}/docs/feeds/releases.xml" '<title>Home</title>'
 	item_count="$(grep -c '<item>' "${site}/docs/feed.xml")"
 	[ "${item_count}" -eq 2 ] || fail "expected two items in limited RSS feed, found ${item_count}"
 	latest_line="$(grep -n -m1 '<title>Latest &amp; greatest</title>' "${site}/docs/feed.xml" | cut -d: -f1)"
 	created_line="$(grep -n -m1 '<title>Created date</title>' "${site}/docs/feed.xml" | cut -d: -f1)"
 	[ "${latest_line}" -lt "${created_line}" ] || fail "expected RSS items to sort from newest to oldest"
+	if php -r 'exit(class_exists("DOMDocument") ? 0 : 1);'
+	then
+		php -r '$xml = new DOMDocument(); exit($xml->load($argv[1]) ? 0 : 1);' "${site}/docs/feed.xml" \
+			|| fail "expected generated RSS to be well-formed XML"
+	fi
 }
 
 test_rss_validation_preserves_sources_and_output()
@@ -935,6 +976,44 @@ EOF
 		assert_command_fails "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-membership.log" 2>&1
 	)
 	assert_file_contains "${DEBUG_DIR}/${CURRENT_TEST}-membership.log" 'RSS feed membership must be true or false'
+	assert_file_contains "${site}/docs/index.html" '<h1 id="hello">Hello</h1>'
+
+	cat > "${site}/pages/index.md" <<'EOF'
+---
+title: Replacement
+date: 2026-10-24
+feeds: [main]
+rss:
+  media:content:
+    _attributes:
+      url: https://example.test/image.jpg
+---
+
+# Replacement
+EOF
+	(
+		cd "${site}"
+		assert_command_fails "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-namespace.log" 2>&1
+	)
+	assert_file_contains "${DEBUG_DIR}/${CURRENT_TEST}-namespace.log" 'Unknown RSS namespace prefix media'
+	assert_file_contains "${site}/docs/index.html" '<h1 id="hello">Hello</h1>'
+
+	cat > "${site}/pages/index.md" <<'EOF'
+---
+title: Replacement
+date: 2026-10-24
+feeds: [main]
+rss:
+  title: Custom replacement
+---
+
+# Replacement
+EOF
+	(
+		cd "${site}"
+		assert_command_fails "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-generated-field.log" 2>&1
+	)
+	assert_file_contains "${DEBUG_DIR}/${CURRENT_TEST}-generated-field.log" 'cannot replace generated element title'
 	assert_file_contains "${site}/docs/index.html" '<h1 id="hello">Hello</h1>'
 
 	cat > "${site}/.smgen.yaml" <<'EOF'

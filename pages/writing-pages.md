@@ -63,6 +63,7 @@ SMGen-specific page fields include:
 - `modified`: optional override for sitemap `lastmod`.
 - `archive`: include a dated page in the legacy archive. Default: `true`.
 - `feeds`: named RSS feed memberships as a list or boolean mapping.
+- `rss`: custom RSS item elements for pages selected into a feed.
 - `menus`: named menu memberships and per-menu link settings.
 
 The default template also uses Pandoc metadata such as `pagetitle`, `author`,

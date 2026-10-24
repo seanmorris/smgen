@@ -5,19 +5,21 @@ title: Linux
 # Install on Linux
 
 SMGen requires Bash 4 or newer, PHP CLI with the YAML extension, mikefarah
-`yq` 4, and Pandoc. Install `curl` for initialization and updates. Install
-`inotify-tools` for `smgen watch` and `aspell` for proofreading.
+`yq` 4, and Pandoc. RSS feed generation requires XMLWriter, available in the
+`php-xml` package on Debian, Ubuntu, and Fedora. Install `curl` for
+initialization and updates. Install `inotify-tools` for `smgen watch` and
+`aspell` for proofreading.
 
 ## Debian and Ubuntu
 
 ```bash
-apt install bash php php-yaml pandoc curl inotify-tools aspell
+apt install bash php php-yaml php-xml pandoc curl inotify-tools aspell
 ```
 
 ## Fedora
 
 ```bash
-dnf install bash php php-yaml pandoc curl inotify-tools aspell
+dnf install bash php php-yaml php-xml pandoc curl inotify-tools aspell
 ```
 
 ## Arch Linux
@@ -47,7 +49,7 @@ systems.
 ```bash
 bash --version
 php -v
-php -m | grep -i '^yaml$'
+php -m | grep -Ei '^(yaml|xmlwriter)$'
 yq --version
 pandoc --version
 ```

@@ -9,7 +9,8 @@ weight: 7
 
 Install the named executable and ensure it is on `PATH`. Every build requires
 Bash 4 or newer, PHP CLI with the YAML extension, mikefarah `yq` 4, and Pandoc.
-The `watch`, `proofread`, and search features have additional optional tools.
+RSS feed generation also requires XMLWriter. The `watch`, `proofread`, and
+search features have additional optional tools.
 
 ## Why does `yq` report a parser or `jq` error?
 
@@ -59,6 +60,10 @@ feed must supply `date` or `created` in its frontmatter.
 Check that every name under the page's `feeds` field exists in `RSS_FEEDS`.
 Each selected page needs a valid `date` or `created` value. Feed output paths
 must end in `.xml` and cannot replace a page, static asset, or sitemap file.
+
+An `Unknown RSS namespace prefix` error means custom `rss` or `channel` data
+uses a prefix missing from the feed's `namespaces` mapping. Add the namespace
+URI to every feed that receives the custom element.
 
 See [RSS Feeds](rss.html) for the configuration and frontmatter formats.
 
@@ -126,6 +131,12 @@ terminal and run `smgen build` after changes in another.
 Linux distributions usually provide a `php-yaml` package. On macOS, install a
 matching PHP and YAML extension through shivammathur's Homebrew taps. See the
 [macOS installation page](os-specific/mac-osx.html) for commands.
+
+## How do I install XMLWriter?
+
+Debian, Ubuntu, and Fedora provide XMLWriter in the `php-xml` package.
+Homebrew PHP includes it. Confirm the active PHP installation with
+`php -m | grep -i '^xmlwriter$'`.
 
 ## Why does `smgen proofread` reject my dictionary?
 

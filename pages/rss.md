@@ -38,6 +38,8 @@ Each feed supports:
 - `link`: channel page URL. Local paths resolve against `BASE_URL`. Default: `/`.
 - `language`: optional channel language such as `en-us`.
 - `limit`: maximum number of items. Default: `20`. Use `0` for every item.
+- `namespaces`: XML namespace prefixes used by custom feed data.
+- `channel`: custom elements added to the RSS channel.
 
 Feed names may contain letters, numbers, periods, underscores, and hyphens.
 Each output path must end in `.xml`. Duplicate paths and paths that collide
@@ -69,6 +71,56 @@ feeds:
 
 An unknown feed name or a membership value other than `true` or `false` fails
 the build. Pages without `feeds` do not appear in any RSS feed.
+
+## Add Custom RSS Data
+
+Use `channel` in a feed definition for channel data. Use `rss` in page
+frontmatter for item data:
+
+```yaml
+RSS_FEEDS:
+  main:
+    title: Example Site
+    description: Recent articles
+    namespaces:
+      media: http://search.yahoo.com/mrss/
+    channel:
+      copyright: Copyright 2026 Example Site
+      category: [Engineering, Releases]
+```
+
+```yaml
+---
+title: Version 2.0
+date: 2026-10-24
+feeds: [main]
+rss:
+  author: editor@example.test
+  category:
+    - _text: Releases
+      _attributes:
+        domain: https://example.test/topics
+  enclosure:
+    _attributes:
+      url: https://example.test/version-2.mp3
+      length: 1234
+      type: audio/mpeg
+  media:content:
+    _attributes:
+      url: https://example.test/version-2.png
+      medium: image
+---
+```
+
+A scalar becomes element text. A sequence repeats the element. A mapping
+creates child elements. Within an element, `_text` sets its text and
+`_attributes` sets XML attributes. An element may contain text or child
+elements, but not both. A null value creates an empty element.
+
+Declare each prefix used by custom elements or attributes in the feed's
+`namespaces` mapping. SMGen declares `atom` and `xml` itself. Custom values are
+escaped and emitted as written; URL values do not resolve against `BASE_URL`.
+Generated channel and item fields cannot be replaced through custom data.
 
 ## Dates and Item Data
 

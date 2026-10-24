@@ -71,7 +71,7 @@ function rssPageTitle($metadata, $output, $source)
 		}
 	}
 	$name = preg_replace('/\.[^.]+$/', '', basename($output));
-	return ucwords(str_replace(['-', '_'], ' ', $name));
+	return rssRequiredText(ucwords(str_replace(['-', '_'], ' ', $name)), 'RSS item title in ' . $source);
 }
 
 function rssPageDescription($metadata, $source)
@@ -112,6 +112,20 @@ function rssFeedItems($definitions, $manifestPath, $baseUrl)
 			continue;
 		}
 
+		$custom = rssCustomElements(
+			$metadata['rss'] ?? [],
+			'RSS item data in ' . $page['source'],
+			['title', 'link', 'guid', 'pubDate', 'description']
+		);
+		foreach($selected as $feedName)
+		{
+			rssValidateCustomNamespaces(
+				$custom,
+				$definitions[$feedName]['namespaces'],
+				'RSS item data in ' . $page['source'] . ' for ' . $feedName
+			);
+		}
+
 		$date = rssPageDate($metadata, $page['source']);
 		$item = [
 			'title' => rssPageTitle($metadata, $page['output'], $page['source']),
@@ -119,6 +133,7 @@ function rssFeedItems($definitions, $manifestPath, $baseUrl)
 			'pubDate' => $date['formatted'],
 			'timestamp' => $date['timestamp'],
 			'description' => rssPageDescription($metadata, $page['source']),
+			'custom' => $custom,
 		];
 		foreach($selected as $feedName)
 		{
@@ -142,42 +157,117 @@ function rssFeedItems($definitions, $manifestPath, $baseUrl)
 	return $items;
 }
 
+function rssWriteCustomElement($writer, $name, $node)
+{
+	if(is_array($node) && rssArrayIsList($node))
+	{
+		foreach($node as $item)
+		{
+			rssWriteCustomElement($writer, $name, $item);
+		}
+		return;
+	}
+
+	$writer->startElement($name);
+	if(is_array($node))
+	{
+		foreach($node['_attributes'] ?? [] as $attribute => $value)
+		{
+			$writer->writeAttribute($attribute, $value);
+		}
+	}
+	if($node === null)
+	{
+		$writer->endElement();
+		return;
+	}
+	if(!is_array($node))
+	{
+		$writer->text($node);
+		$writer->endElement();
+		return;
+	}
+	if(array_key_exists('_text', $node))
+	{
+		$writer->text($node['_text']);
+		$writer->endElement();
+		return;
+	}
+	foreach($node as $childName => $childNode)
+	{
+		if($childName !== '_attributes')
+		{
+			rssWriteCustomElement($writer, $childName, $childNode);
+		}
+	}
+	$writer->endElement();
+}
+
+function rssWriteCustomElements($writer, $elements)
+{
+	foreach($elements as $name => $node)
+	{
+		rssWriteCustomElement($writer, $name, $node);
+	}
+}
+
 function rssRenderFeed($definition, $items, $baseUrl)
 {
-	$selfUrl = rssEncodeOutputUrl($baseUrl, $definition['path']);
-	$channelUrl = rssResolveUrl($baseUrl, $definition['link']);
-	$xml = '<?xml version="1.0" encoding="UTF-8"?>' . PHP_EOL;
-	$xml .= '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">' . PHP_EOL;
-	$xml .= "\t<channel>" . PHP_EOL;
-	$xml .= "\t\t<title>" . rssXmlEscape($definition['title']) . '</title>' . PHP_EOL;
-	$xml .= "\t\t<link>" . rssXmlEscape($channelUrl) . '</link>' . PHP_EOL;
-	$xml .= "\t\t<description>" . rssXmlEscape($definition['description']) . '</description>' . PHP_EOL;
-	$xml .= "\t\t<atom:link href=\"" . rssXmlEscape($selfUrl) . '" rel="self" type="application/rss+xml" />' . PHP_EOL;
+	$writer = new \XMLWriter();
+	if(!$writer->openMemory())
+	{
+		throw new \RuntimeException('Unable to create the RSS XML document.');
+	}
+	$writer->setIndent(true);
+	$writer->setIndentString("\t");
+	$writer->startDocument('1.0', 'UTF-8');
+	$writer->startElement('rss');
+	$writer->writeAttribute('version', '2.0');
+	$writer->writeAttribute('xmlns:atom', 'http://www.w3.org/2005/Atom');
+	foreach($definition['namespaces'] as $prefix => $uri)
+	{
+		$writer->writeAttribute('xmlns:' . $prefix, $uri);
+	}
+	$writer->startElement('channel');
+	$writer->writeElement('title', $definition['title']);
+	$writer->writeElement('link', rssResolveUrl($baseUrl, $definition['link']));
+	$writer->writeElement('description', $definition['description']);
+	$writer->startElement('atom:link');
+	$writer->writeAttribute('href', rssEncodeOutputUrl($baseUrl, $definition['path']));
+	$writer->writeAttribute('rel', 'self');
+	$writer->writeAttribute('type', 'application/rss+xml');
+	$writer->endElement();
 	if(isset($definition['language']))
 	{
-		$xml .= "\t\t<language>" . rssXmlEscape($definition['language']) . '</language>' . PHP_EOL;
+		$writer->writeElement('language', $definition['language']);
 	}
 	if($items)
 	{
-		$xml .= "\t\t<lastBuildDate>" . rssXmlEscape($items[0]['pubDate']) . '</lastBuildDate>' . PHP_EOL;
+		$writer->writeElement('lastBuildDate', $items[0]['pubDate']);
 	}
-	$xml .= "\t\t<generator>SMGen</generator>" . PHP_EOL;
+	$writer->writeElement('generator', 'SMGen');
+	rssWriteCustomElements($writer, $definition['channel']);
 	foreach($items as $item)
 	{
-		$xml .= "\t\t<item>" . PHP_EOL;
-		$xml .= "\t\t\t<title>" . rssXmlEscape($item['title']) . '</title>' . PHP_EOL;
-		$xml .= "\t\t\t<link>" . rssXmlEscape($item['link']) . '</link>' . PHP_EOL;
-		$xml .= "\t\t\t<guid isPermaLink=\"true\">" . rssXmlEscape($item['link']) . '</guid>' . PHP_EOL;
-		$xml .= "\t\t\t<pubDate>" . rssXmlEscape($item['pubDate']) . '</pubDate>' . PHP_EOL;
+		$writer->startElement('item');
+		$writer->writeElement('title', $item['title']);
+		$writer->writeElement('link', $item['link']);
+		$writer->startElement('guid');
+		$writer->writeAttribute('isPermaLink', 'true');
+		$writer->text($item['link']);
+		$writer->endElement();
+		$writer->writeElement('pubDate', $item['pubDate']);
 		if($item['description'] !== null)
 		{
-			$xml .= "\t\t\t<description>" . rssXmlEscape($item['description']) . '</description>' . PHP_EOL;
+			$writer->writeElement('description', $item['description']);
 		}
-		$xml .= "\t\t</item>" . PHP_EOL;
+		rssWriteCustomElements($writer, $item['custom']);
+		$writer->endElement();
 	}
-	$xml .= "\t</channel>" . PHP_EOL;
-	$xml .= '</rss>' . PHP_EOL;
-	return $xml;
+	$writer->endElement();
+	$writer->endElement();
+	$writer->endDocument();
+	return $writer->outputMemory();
 }
 
 function rssOutputTarget($buildDir, $path, $feedName)
@@ -221,6 +311,10 @@ function rssGenerateFeeds($baseUrl, $buildDir, $manifestPath)
 	if(!$definitions)
 	{
 		return;
+	}
+	if(!class_exists('XMLWriter'))
+	{
+		throw new \RuntimeException('RSS generation requires the PHP XMLWriter extension.');
 	}
 	$items = rssFeedItems($definitions, $manifestPath, $baseUrl);
 	foreach($definitions as $name => $definition)
