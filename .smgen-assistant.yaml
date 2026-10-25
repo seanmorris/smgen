@@ -1,2 +1,18 @@
 title: Ask SMGen
 greeting: Ask about building, configuring, or publishing an SMGen site.
+retrieval:
+  maxChunks: 2
+  maxCharacters: 3000
+models:
+  - id: Qwen2.5-Coder-0.5B-Instruct-q4f32_1-MLC
+    label: Qwen2.5 Coder 0.5B
+    downloadMB: 300
+    memoryMB: 1061
+  - id: Qwen2.5-1.5B-Instruct-q4f32_1-MLC
+    label: Qwen2.5 1.5B
+    downloadMB: 880
+    memoryMB: 1889
+  - id: Qwen2.5-Coder-1.5B-Instruct-q4f32_1-MLC
+    label: Qwen2.5 Coder 1.5B
+    downloadMB: 880
+    memoryMB: 1889
