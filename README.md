@@ -29,6 +29,8 @@ Every build requires:
 - [mikefarah/yq](https://github.com/mikefarah/yq) 4
 - Pandoc
 
+The npm installation method requires Node.js 20 or newer.
+
 `smgen init`, `smgen create-random-page`, and the installer also require
 `curl`. RSS feed generation requires the PHP XMLWriter extension. Optional
 commands use `inotify-tools`, `aspell`, and `smgen-search`.
@@ -45,7 +47,24 @@ chmod +x /usr/local/bin/yq
 
 ## Install
 
-Install or update SMGen system-wide:
+Install SMGen globally with npm:
+
+```bash
+npm install --global smgen
+```
+
+To pin SMGen inside one site instead, add it as a development dependency and
+run it through the local executable:
+
+```bash
+npm install --save-dev smgen
+npx smgen build
+```
+
+npm installs the SMGen command, templates, helpers, and static assets. Install
+PHP, Pandoc, `yq`, and any optional shell tools through the operating system.
+
+The shell installer remains available for machines that do not use npm:
 
 ```bash
 curl -fsSL https://seanmorris.github.io/smgen/install.sh | sudo bash

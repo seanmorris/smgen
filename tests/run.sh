@@ -1354,6 +1354,50 @@ test_logo_preserves_its_aspect_ratio()
 	assert_file_contains "${ROOT_DIR}/static/default.css" $'a.logo img.logo-image {\n\twidth: 6rem;\n\theight: auto;'
 }
 
+test_npm_package_installs_a_buildable_cli()
+{
+	begin_test "npm-package"
+	local package_dir archive_name archive consumer site fake_bin
+	package_dir="$(mktemp -d "${TEMP_ROOT}/package.XXXXXX")"
+	archive_name="$(cd "${ROOT_DIR}" && npm pack --ignore-scripts --pack-destination "${package_dir}" --silent)"
+	archive="${package_dir}/${archive_name}"
+	consumer="$(mktemp -d "${TEMP_ROOT}/consumer.XXXXXX")"
+	printf '%s\n' '{"private":true}' > "${consumer}/package.json"
+	(
+		cd "${consumer}"
+		npm install --ignore-scripts --no-audit --no-fund --no-package-lock "${archive}" > "${DEBUG_DIR}/${CURRENT_TEST}-install.log" 2>&1
+	)
+	assert_file_exists "${consumer}/node_modules/smgen/helpers/bootstrap.php"
+	assert_file_exists "${consumer}/node_modules/smgen/templates/page.php"
+	assert_file_exists "${consumer}/node_modules/smgen/static/default.css"
+	assert_file_exists "${consumer}/node_modules/smgen/.smgen-rc-default"
+	"${consumer}/node_modules/.bin/smgen" help > "${DEBUG_DIR}/${CURRENT_TEST}-help.log"
+	assert_file_contains "${DEBUG_DIR}/${CURRENT_TEST}-help.log" 'Usage: smgen'
+
+	site="$(mktemp -d "${TEMP_ROOT}/site.XXXXXX")"
+	CURRENT_SITE="${site}"
+	fake_bin="${package_dir}/fake-bin"
+	mkdir -p "${fake_bin}"
+	cat > "${fake_bin}/curl" <<'EOF'
+#!/usr/bin/env bash
+while [ "$#" -gt 0 ]; do
+	if [ "$1" = "-o" ]; then
+		printf '%s\n' '---' 'title: Packed Site' '---' '' '# Packed Site' > "$2"
+		exit 0
+	fi
+	shift
+done
+exit 1
+EOF
+	chmod +x "${fake_bin}/curl"
+	(
+		cd "${site}"
+		PATH="${fake_bin}:${consumer}/node_modules/.bin:${PATH}" smgen init > "${DEBUG_DIR}/${CURRENT_TEST}-init.log" 2>&1
+		PATH="${consumer}/node_modules/.bin:${PATH}" smgen build > "${DEBUG_DIR}/${CURRENT_TEST}-build.log" 2>&1
+	)
+	assert_file_contains "${site}/docs/index.html" 'Packed Site'
+}
+
 main()
 {
 	test_init_creates_a_buildable_project
@@ -1386,6 +1430,7 @@ main()
 	test_external_links_use_noopener
 	test_primary_mousedown_starts_navigation
 	test_logo_preserves_its_aspect_ratio
+	test_npm_package_installs_a_buildable_cli
 
 	echo "PASS: all tests"
 }

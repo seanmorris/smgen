@@ -1,6 +1,7 @@
 smgen-search browser reader
 Copyright 2025 Sean Morris
 
-Vendored from smgen-search 0.0.1 and modified for formatting and removal of
-unused serialization code. Licensed under the Apache License, Version 2.0.
-The full license is included in this repository as LICENSE.
+Vendored from the smgen-search 0.1.0 source. SMGen includes the reader modules
+so generated sites can search without loading code from a package registry.
+Licensed under the Apache License, Version 2.0. The full license is included in
+this repository as LICENSE.

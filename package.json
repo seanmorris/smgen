@@ -1,6 +1,74 @@
 {
-  "name": "smgen-docs",
-  "private": true,
+  "name": "smgen",
+  "version": "0.1.0",
+  "description": "Build static sites from Markdown with Pandoc, PHP templates, and Bash.",
+  "keywords": [
+    "static-site-generator",
+    "markdown",
+    "pandoc",
+    "documentation"
+  ],
+  "license": "Apache-2.0",
+  "author": "Sean Morris",
+  "homepage": "https://seanmorris.github.io/smgen/",
+  "bugs": "https://github.com/seanmorris/smgen/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/seanmorris/smgen.git"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "smgen": "./smgen.sh"
+  },
+  "files": [
+    ".smgen-rc-default",
+    "helpers",
+    "templates",
+    "smgen.sh",
+    "static/archive.css",
+    "static/bg.jpg",
+    "static/cosmic.css",
+    "static/default.css",
+    "static/favicon.ico",
+    "static/fonts.css",
+    "static/github-icon.png",
+    "static/github.svg",
+    "static/icon-16.png",
+    "static/logo.svg",
+    "static/main.js",
+    "static/moon.svg",
+    "static/nav-state.js",
+    "static/notosans-bold.woff",
+    "static/notosans-bold.woff2",
+    "static/notosans-bolditalic.woff",
+    "static/notosans-bolditalic.woff2",
+    "static/notosans-italic.woff",
+    "static/notosans-italic.woff2",
+    "static/notosans-regular.woff",
+    "static/notosans-regular.woff2",
+    "static/search.js",
+    "static/search.svg",
+    "static/sitemap-badge.png",
+    "static/sun.svg",
+    "static/techno.css",
+    "static/techno.png",
+    "static/theme-variant.js",
+    "static/themes.js",
+    "static/vendor/smgen-search",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "bash ./tests/run.sh",
+    "build:docs": "./smgen.sh build",
+    "check": "npm test && npm run build:docs",
+    "prepack": "npm run check"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "devDependencies": {
     "smgen-assistant": "https://github.com/seanmorris/smgen-assistant/releases/download/v0.1.21/smgen-assistant-0.1.21.tgz"
   }
