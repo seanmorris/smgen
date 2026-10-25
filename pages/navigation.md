@@ -295,6 +295,9 @@ Pages without a `menus` field use the original rules:
 - a page with `date` joins the archive unless `archive: false` is set.
 - `ARCHIVE_TITLE` supplies the archive heading.
 
+Pages with a `menus` field use explicit named menu membership instead of these
+legacy rules.
+
 Existing project helpers that define their own `renderNavBar()` remain usable.
 The core named-menu functions load alongside that override, so a project can
 migrate templates and menus incrementally.
