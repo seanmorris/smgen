@@ -7,9 +7,11 @@ author:
 
 # SMGen
 
-SMGen converts Markdown into a static HTML site. Pandoc renders the content,
-PHP templates provide the page structure, and Bash coordinates configuration,
-assets, navigation, RSS feeds, search, and sitemap generation.
+SMGen turns Markdown into portable static HTML files. You can serve the output
+with GitHub Pages or any other static host, and the deployed site does not need
+PHP or an application server. Pandoc renders the content, PHP templates provide
+the page structure, and Bash coordinates configuration, assets, navigation,
+RSS feeds, search, and sitemap generation.
 
 ## Requirements
 

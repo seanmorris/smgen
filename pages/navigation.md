@@ -14,6 +14,10 @@ JavaScript to load or construct navigation.
 
 ## Define Menus and Regions
 
+To add another sidebar menu, define it under `MENUS`, then list its name under
+`MENU_REGIONS.sidebar`. Choose the built-in `flat`, `tree`, or `timeline`
+renderer that matches the navigation you want.
+
 Put structured menu configuration in `.smgen.yaml` or an environment-specific
 YAML file:
 
