@@ -1359,13 +1359,13 @@ test_npm_package_installs_a_buildable_cli()
 	begin_test "npm-package"
 	local package_dir archive_name archive consumer site fake_bin
 	package_dir="$(mktemp -d "${TEMP_ROOT}/package.XXXXXX")"
-	archive_name="$(cd "${ROOT_DIR}" && npm pack --ignore-scripts --pack-destination "${package_dir}" --silent)"
+	archive_name="$(cd "${ROOT_DIR}" && npm_config_dry_run=false npm pack --ignore-scripts --pack-destination "${package_dir}" --silent)"
 	archive="${package_dir}/${archive_name}"
 	consumer="$(mktemp -d "${TEMP_ROOT}/consumer.XXXXXX")"
 	printf '%s\n' '{"private":true}' > "${consumer}/package.json"
 	(
 		cd "${consumer}"
-		npm install --ignore-scripts --no-audit --no-fund --no-package-lock "${archive}" > "${DEBUG_DIR}/${CURRENT_TEST}-install.log" 2>&1
+		npm_config_dry_run=false npm install --ignore-scripts --no-audit --no-fund --no-package-lock "${archive}" > "${DEBUG_DIR}/${CURRENT_TEST}-install.log" 2>&1
 	)
 	assert_file_exists "${consumer}/node_modules/smgen/helpers/bootstrap.php"
 	assert_file_exists "${consumer}/node_modules/smgen/templates/page.php"
