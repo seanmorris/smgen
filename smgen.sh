@@ -655,7 +655,7 @@ watch_site()
 	build_site
 
 	echo "Serving on http://localhost:${DEV_PORT}; press ctrl+c to exit."
-	"${PHP}" -S "localhost:${DEV_PORT}" -t "${OUTPUT_DIR}" &
+	"${PHP}" -S "0.0.0.0:${DEV_PORT}" -t "${OUTPUT_DIR}" &
 	server_pid=$!
 	trap 'kill "${server_pid}" 2>/dev/null || true' EXIT
 	trap 'exit 130' INT
