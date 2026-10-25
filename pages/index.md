@@ -7,11 +7,13 @@ author:
 
 # SMGen
 
+<!-- <what keywords="static site generator, purpose, architecture"> -->
 SMGen turns Markdown into portable static HTML files. You can serve the output
 with GitHub Pages or any other static host, and the deployed site does not need
 PHP or an application server. Pandoc renders the content, PHP templates provide
 the page structure, and Bash coordinates configuration, assets, navigation,
 RSS feeds, search, and sitemap generation.
+<!-- </what> -->
 
 ## Requirements
 
@@ -70,6 +72,7 @@ refuses to replace an existing non-Git directory at that location.
 
 ## Create a Site
 
+<!-- <how keywords="first site, start, setup, initialize, local site"> -->
 Initialize an empty directory:
 
 ```bash
@@ -113,6 +116,7 @@ On Linux, one command can build, serve, and watch the source directories:
 ```bash
 smgen watch
 ```
+<!-- </how> -->
 
 ## Next Steps
 
