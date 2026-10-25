@@ -10,6 +10,8 @@ web server does not need PHP, Pandoc, `yq`, or SMGen after the build finishes.
 
 ## Set the Public URL
 
+<!-- <how keywords="base_url, public root, subdirectory, trailing slash, generated links"> -->
+<!-- <where keywords="public url, site root, production url"> -->
 Set `BASE_URL` to the site's public root before a production build:
 
 ```bash
@@ -18,6 +20,8 @@ BASE_URL=https://example.com/project smgen build
 
 SMGen uses this value for stylesheet, script, navigation, search, and sitemap
 URLs. It accepts the value with or without a trailing slash.
+<!-- </where> -->
+<!-- </how> -->
 
 ## Static Hosting
 
@@ -44,6 +48,7 @@ method requires generated files to remain under version control.
 
 ## GitHub Pages with Actions
 
+<!-- <how keywords="github build and publish, do not commit generated files, actions deployment, upload docs artifact"> -->
 An Actions deployment builds the site on each push and uploads the generated
 artifact. Configure Pages to use GitHub Actions:
 
@@ -70,3 +75,4 @@ The workflow pins third-party actions and the search indexer, grants deployment
 permissions only to the deployment job, and uploads `docs/` as the Pages
 artifact. SMGen handles output replacement, so the workflow does not need a
 separate cleanup step.
+<!-- </how> -->

@@ -5,6 +5,8 @@ weight: 1
 
 # Writing Pages
 
+<!-- <where keywords="new markdown page, source page location, published url, output path"> -->
+<!-- <how keywords="add markdown page, create page, preserve directory structure"> -->
 Place source pages under `PAGES_DIR`, which defaults to `pages/`. A source path
 keeps its directory structure and receives an `.html` extension:
 
@@ -15,9 +17,13 @@ pages/guides/install.md -> docs/guides/install.html
 
 Run `smgen build` after an edit. On Linux, `smgen watch` rebuilds when a source,
 template, helper, asset, configuration, or hook file changes.
+<!-- </how> -->
+<!-- </where> -->
 
 ## Page Frontmatter
 
+<!-- <what keywords="page title, yaml frontmatter, page metadata"> -->
+<!-- <how keywords="add title, configure page, frontmatter markers"> -->
 A page may begin with a YAML mapping enclosed by `---` lines. The opening marker
 must be the first content in the file.
 
@@ -72,6 +78,8 @@ field that Pandoc exposes.
 
 Paths in `template`, `header`, and `footer` must resolve inside `TEMPLATE_DIR`.
 A path that escapes that directory fails the build before output replacement.
+<!-- </how> -->
+<!-- </what> -->
 
 ## Menu Membership
 

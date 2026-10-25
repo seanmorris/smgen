@@ -50,6 +50,7 @@ absolute. An empty development value produces root-relative URLs.
 
 ## Select Pages
 
+<!-- <how keywords="feed membership, main and releases, publish article, feeds frontmatter"> -->
 Use a list when a page belongs to each named feed:
 
 ```yaml
@@ -71,6 +72,7 @@ feeds:
 
 An unknown feed name or a membership value other than `true` or `false` fails
 the build. Pages without `feeds` do not appear in any RSS feed.
+<!-- </how> -->
 
 ## Add Custom RSS Data
 
@@ -124,6 +126,8 @@ Generated channel and item fields cannot be replaced through custom data.
 
 ## Dates and Item Data
 
+<!-- <what keywords="rss date, missing date, no timestamp, feed build failure"> -->
+<!-- <when keywords="publication time, date then created, rss ordering"> -->
 SMGen chooses an item's publication time in this order:
 
 1. `date`
@@ -147,3 +151,5 @@ The default template adds one discovery link for each configured feed:
 
 Custom page templates can render the same links from `rssFeedDefinitions()`.
 Feed generation adds no stylesheet, browser script, or client-side work.
+<!-- </when> -->
+<!-- </what> -->

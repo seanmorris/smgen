@@ -11,6 +11,8 @@ calling environment.
 
 ## Precedence
 
+<!-- <what keywords="configuration order, which value wins, project yaml override"> -->
+<!-- <where keywords="local override, override project yaml, configuration source"> -->
 SMGen resolves supported settings in this order, from lowest to highest:
 
 1. built-in defaults
@@ -28,6 +30,8 @@ periods, underscores, and hyphens.
 Use `.smgen.yaml` for fixed declarative values. Use `.smgen-rc` for shell
 expansion or computed values. Use `.env` for local overrides. SMGen sources the
 two shell files, so only use configuration from a trusted project.
+<!-- </where> -->
+<!-- </what> -->
 
 ## Site and Page Settings
 

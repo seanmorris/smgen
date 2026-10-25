@@ -72,7 +72,7 @@ refuses to replace an existing non-Git directory at that location.
 
 ## Create a Site
 
-<!-- <how keywords="first site, start, setup, initialize, local site"> -->
+<!-- <how keywords="first site, start, setup, initialize, local site, commands and files, from nothing, empty folder"> -->
 Initialize an empty directory:
 
 ```bash

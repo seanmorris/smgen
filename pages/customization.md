@@ -11,6 +11,7 @@ build can replace `OUTPUT_DIR` safely.
 
 ## Add Styles and Scripts
 
+<!-- <how keywords="custom css and javascript, publish static assets, watch static changes, link stylesheet, script settings"> -->
 Place browser assets under `static/`, then add their published URLs to
 `.smgen.yaml`:
 
@@ -46,6 +47,7 @@ INLINE_BODY_SCRIPTS:
 Inline settings read the named file during the build. URL-based settings pass
 through `BASE_URL` unless they already contain an absolute URL, protocol,
 data URL, email link, or telephone link.
+<!-- </how> -->
 
 ## Use Built-in Assets
 
@@ -98,6 +100,7 @@ Use `pandoc --list-highlight-styles` to list accepted values for
 
 ## Write a Page Template
 
+<!-- <how keywords="copy default template, change page layout, select template in frontmatter, custom html layout"> -->
 A page template combines PHP with Pandoc template variables. Copy
 `templates/page.php` when you need a different document structure, then select
 the new file from frontmatter:
@@ -144,6 +147,7 @@ template in this order:
 
 For a Markdown source, the extension-specific names are `md-page.php` and
 `md-template.html`.
+<!-- </how> -->
 
 ## Change Header and Footer Includes
 

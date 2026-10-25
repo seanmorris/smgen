@@ -14,6 +14,7 @@ JavaScript to load or construct navigation.
 
 ## Define Menus and Regions
 
+<!-- <how keywords="second sidebar menu, navigation block, define tree menu, place menu in sidebar"> -->
 To add another sidebar menu, define it under `MENUS`, then list its name under
 `MENU_REGIONS.sidebar`. Choose the built-in `flat`, `tree`, or `timeline`
 renderer that matches the navigation you want.
@@ -59,6 +60,7 @@ value.
 
 A region contains an ordered list of menu names. A menu may appear in more than
 one region. Every referenced menu must exist.
+<!-- </how> -->
 
 ## Add Explicit Links
 
@@ -110,6 +112,7 @@ unknown parents, and parent cycles before replacing the current output.
 
 ## Select Menus from Pages
 
+<!-- <how keywords="menu membership, page opt out, veto selector, public guides, menu exceptions"> -->
 Use `menus` in page frontmatter to join one or more named menus:
 
 ```yaml
@@ -148,6 +151,7 @@ membership for that page. Pages without `menus` continue to use
 Directory `.fm.yaml` files accept the same `menus` list or mapping. A directory
 joins a flat or tree menu as a group. Timeline menus accept pages only. The
 normal `title`, `weight`, and `open` values remain the defaults for that group.
+<!-- </how> -->
 
 ## Render Menus in Templates
 
@@ -175,6 +179,9 @@ Check optional regions with `menuRegionExists()` before rendering them.
 
 ## Timeline Menus
 
+<!-- <how keywords="blogger archive, timeline calendar, timeline javascript, timeline css, archive stylesheet, every page"> -->
+<!-- <what keywords="timeline behavior, calendar, expandable years and months, conditional assets"> -->
+<!-- <when keywords="timeline date, date fallback, creation time"> -->
 A timeline menu accepts content pages only. It renders:
 
 - a linked calendar for the active or newest month
@@ -203,9 +210,13 @@ Timeline markup uses native `details` elements. SMGen adds no timeline-specific
 JavaScript. It copies and links `archive.css` only when a populated timeline is
 assigned to a region. A timeline that is empty or never placed in a region adds
 no stylesheet request.
+<!-- </when> -->
+<!-- </what> -->
+<!-- </how> -->
 
 ## Menu Plugins
 
+<!-- <how keywords="bulk page selection, public guides, include exclude where, plugin selectors"> -->
 List plugin manifests in the order they should run:
 
 ```yaml
@@ -254,6 +265,7 @@ Site-level `MENUS` may also contain `links` and `selectors`. SMGen loads built-i
 menu definitions first, then plugin manifests in `PLUGINS` order, then site
 configuration. Explicit page and directory memberships apply after those
 contributions.
+<!-- </how> -->
 
 ## Alter Hooks
 
@@ -284,6 +296,8 @@ fail the build and preserve the last successful output.
 
 ## Legacy Navigation
 
+<!-- <what keywords="legacy inference, menus field, leftbarlink behavior, gradual migration"> -->
+<!-- <how keywords="migrate old sidebar, keep rendernavbar, named menu migration"> -->
 SMGen always defines the built-in `sidebar` tree menu and `archive` timeline
 menu. If `MENU_REGIONS.sidebar` is absent, `NAVIGATION_WIDGETS` maps `tree` to
 `sidebar` and `archive` to `archive`.
@@ -301,3 +315,5 @@ legacy rules.
 Existing project helpers that define their own `renderNavBar()` remain usable.
 The core named-menu functions load alongside that override, so a project can
 migrate templates and menus incrementally.
+<!-- </how> -->
+<!-- </what> -->
