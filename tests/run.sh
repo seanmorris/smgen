@@ -902,7 +902,7 @@ test_llms_txt_uses_page_and_directory_frontmatter()
 	local site expected
 	site="$(make_temp_site)"
 	CURRENT_SITE="${site}"
-	mkdir -p "${site}/pages/guides"
+	mkdir -p "${site}/pages/guides/inherited"
 
 	cat > "${site}/.smgen.yaml" <<'EOF'
 SEARCH_ENABLED: 0
@@ -954,6 +954,21 @@ description: Install the tools, then build the site.
 
 # Setup
 EOF
+	cat > "${site}/pages/guides/inherited/.fm.yaml" <<'EOF'
+llms:
+  description: Inherited shortcut description.
+  weight: -10
+EOF
+	cat > "${site}/pages/guides/inherited/shortcut.md" <<'EOF'
+---
+title: Shortcut
+description: Page description should not appear.
+weight: 90
+llms: start
+---
+
+# Shortcut
+EOF
 	cat > "${site}/pages/guides/hidden.md" <<'EOF'
 ---
 title: Hidden Guide
@@ -979,6 +994,7 @@ This index points to generated HTML.
 
 ## Start Here
 
+- [Shortcut](https://example.test/docs/guides/inherited/shortcut.html): Inherited shortcut description.
 - [Quick Start](https://example.test/docs/quick%20start.html)
 - [Start \[here\]](https://example.test/docs/index.html): Read the home page.
 
@@ -991,6 +1007,7 @@ EOF
 	assert_file_contains "${site}/docs/index.html" 'rel="describedby" type="text/markdown" href="https://example.test/docs/llms.txt"'
 	assert_file_excludes "${site}/docs/llms.txt" 'Hidden Guide'
 	assert_file_excludes "${site}/docs/llms.txt" 'lower-priority description'
+	assert_file_excludes "${site}/docs/llms.txt" 'Page description should not appear'
 }
 
 test_llms_validation_preserves_previous_output()

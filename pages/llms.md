@@ -80,12 +80,14 @@ page metadata used by the index:
   omits it when none exists.
 - `weight` falls back to the page's `weight`, then `0`.
 
-Pages sort by weight and source path. A section name can stand in for the
-mapping when a page needs no overrides:
+Pages sort by weight and source path. Use a section name as shorthand for
+setting only `section`:
 
 ```yaml
 llms: start
 ```
+
+Inherited `title`, `description`, and `weight` fields remain in effect.
 <!-- </how> -->
 
 ## Select a Directory

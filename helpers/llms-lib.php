@@ -216,7 +216,7 @@ function llmsApplySelection($current, $value, $context)
 		{
 			throw new \RuntimeException('llms section must not be empty in ' . $context . '.');
 		}
-		return ['section' => $section];
+		return array_replace(is_array($current) ? $current : [], ['section' => $section]);
 	}
 
 	$value = llmsValidateMapping($value, $context);
