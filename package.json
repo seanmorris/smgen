@@ -70,6 +70,6 @@
     "access": "public"
   },
   "devDependencies": {
-    "smgen-assistant": "git+https://github.com/seanmorris/smgen-assistant.git#5bc116820b07746c2610b17d81a0de367fbd8619"
+    "smgen-assistant": "git+https://github.com/seanmorris/smgen-assistant.git#cd572c10b6162a7b8d63c948a85297e7215896d9"
   }
 }
