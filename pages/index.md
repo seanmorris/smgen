@@ -88,13 +88,13 @@ pages for platform-specific installation notes.
 Install SMGen globally with npm:
 
 ```bash
-npm install --global @seanmorris/smgen
+npm install --global smgen
 ```
 
 To pin SMGen inside one site, install it as a development dependency:
 
 ```bash
-npm install --save-dev @seanmorris/smgen
+npm install --save-dev smgen
 npx smgen build
 ```
 

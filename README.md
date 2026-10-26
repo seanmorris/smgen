@@ -51,14 +51,14 @@ chmod +x /usr/local/bin/yq
 Install SMGen globally with npm:
 
 ```bash
-npm install --global @seanmorris/smgen
+npm install --global smgen
 ```
 
 To pin SMGen inside one site instead, add it as a development dependency and
 run it through the local executable:
 
 ```bash
-npm install --save-dev @seanmorris/smgen
+npm install --save-dev smgen
 npx smgen build
 ```
 

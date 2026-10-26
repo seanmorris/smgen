@@ -1,7 +1,7 @@
 # npm Package Release Outline
 
 I. Package Set
-   A. Publish `@seanmorris/smgen` as the main static site generator.
+   A. Publish `smgen` as the main static site generator.
       1. Expose `smgen.sh` through the `smgen` executable.
       2. Include the helpers, templates, default configuration, and static assets required at runtime.
       3. Keep PHP, Pandoc, `yq`, and optional shell tools as documented system requirements.
