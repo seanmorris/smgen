@@ -157,6 +157,25 @@ The regression suite covers configuration precedence, frontmatter, templates,
 output rollback, hooks, path safety, static assets, search, sitemap output,
 RSS output, legacy navigation, named menus, plugins, and timeline dates.
 
+### Publish a Release
+
+Set the version in `package.json` and `package-lock.json`, commit it, then push
+the matching stable tag:
+
+```bash
+VERSION="$(node -p "require('./package.json').version")"
+git tag "v${VERSION}"
+git push origin "v${VERSION}"
+```
+
+The `publish.yml` workflow accepts tags in the `v0.0.0` form. It rejects a tag
+that differs from the package version, runs the package checks, inspects the
+archive, and publishes it to npm with provenance.
+
+Publish the first registry version interactively with two-factor
+authentication. Then configure npm trusted publishing for `seanmorris/smgen`
+and `publish.yml` and allow `npm publish`. Later releases need no npm token.
+
 ## License
 
 SMGen is licensed under the Apache License 2.0. See [LICENSE](LICENSE).

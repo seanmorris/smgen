@@ -3,6 +3,8 @@ name: Validate and Deploy
 on:
   pull_request:
   push:
+    branches:
+      - '**'
 
 permissions:
   contents: read
@@ -47,7 +49,10 @@ jobs:
         run: brew install bash pandoc yq
 
       - name: Install search indexer
-        run: npm install --global smgen-search@0.0.1
+        run: |
+          curl -fsSL https://github.com/seanmorris/smgen-search/releases/download/v0.1.1/smgen-search-0.1.1.tgz -o /tmp/smgen-search.tgz
+          echo '3ac43831bb223b823a8269b14e3582724b688619418ea3af8bec44578ff109a4  /tmp/smgen-search.tgz' | sha256sum -c -
+          npm install --global /tmp/smgen-search.tgz
 
       - name: Install project dependencies
         run: npm ci
@@ -110,7 +115,10 @@ jobs:
         uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
 
       - name: Install search indexer
-        run: npm install --global smgen-search@0.0.1
+        run: |
+          curl -fsSL https://github.com/seanmorris/smgen-search/releases/download/v0.1.1/smgen-search-0.1.1.tgz -o /tmp/smgen-search.tgz
+          echo '3ac43831bb223b823a8269b14e3582724b688619418ea3af8bec44578ff109a4  /tmp/smgen-search.tgz' | sha256sum -c -
+          npm install --global /tmp/smgen-search.tgz
 
       - name: Install project dependencies
         run: npm ci

@@ -20,7 +20,7 @@
     "node": ">=20"
   },
   "bin": {
-    "smgen": "./smgen.sh"
+    "smgen": "smgen.sh"
   },
   "files": [
     ".smgen-rc-default",

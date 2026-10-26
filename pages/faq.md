@@ -110,7 +110,7 @@ See [Navigation and Plugins](navigation.html) for the complete schema.
 Install the pinned indexer and enable search:
 
 ```bash
-npm install --global smgen-search@0.1.0
+npm install --global smgen-search@0.1.1
 SEARCH_ENABLED=1 smgen build
 ```
 

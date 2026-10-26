@@ -41,10 +41,22 @@ V. Verification
    F. Build an assistant fixture with the packed `smgen-assistant` package.
 
 VI. Publication
-   A. Commit and push each clean repository.
-   B. Create matching Git tags and GitHub releases.
-   C. Publish public npm releases after npm authentication is available.
-   D. Verify registry metadata, archive integrity, executable installation, and public package pages.
+   A. Validate each release before publication.
+      1. Accept stable tags in the `v0.0.0` form.
+      2. Require the tag to match the package version exactly.
+      3. Install locked dependencies without lifecycle scripts.
+      4. Run the complete package checks and inspect the archive.
+   B. Publish from GitHub Actions.
+      1. Use a GitHub-hosted runner and a pinned npm CLI with OIDC support.
+      2. Grant only repository read access and permission to request an identity token.
+      3. Publish public packages with provenance after validation succeeds.
+      4. Keep npm credentials out of repository secrets.
+   C. Configure npm after the first publication.
+      1. Publish the first registry version interactively with two-factor authentication.
+      2. Register `publish.yml` as the trusted publisher for each package.
+      3. Publish future versions by pushing one matching version tag.
+   D. Verify registry metadata, archive integrity, executable installation, provenance, and public package pages.
+   E. Replace temporary release-archive dependencies with registry versions after their first publication.
 
 VII. Documentation Site
    A. Resume the SMGen-built `smgen-assistant` site after package verification.

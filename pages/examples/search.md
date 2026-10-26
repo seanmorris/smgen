@@ -17,7 +17,7 @@ SMGen can build a local full-text index with [smgen-search](https://www.npmjs.co
 Install the pinned search tooling globally:
 
 ```bash
-npm install --global smgen-search@0.1.0
+npm install --global smgen-search@0.1.1
 ```
 
 ## 2. Configure the search index build
