@@ -33,7 +33,7 @@ final class Renderer
 			$pageEnvironment,
 		);
 		$environment = array_merge($pageEnvironment, [
-			'CURRENT_PAGE' => '/' . $page->destination,
+			'CURRENT_PAGE' => $page->publicPath(),
 			'SMGEN_PAGE_FILE' => $page->source,
 		]);
 		$previous = [];

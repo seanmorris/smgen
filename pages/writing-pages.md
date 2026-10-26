@@ -11,12 +11,19 @@ llms:
 <!-- <where keywords="new markdown page, source page location, published url, output path"> -->
 <!-- <how keywords="add markdown page, create page, preserve directory structure"> -->
 Place source pages under `PAGES_DIR`, which defaults to `pages/`. A source path
-keeps its directory structure and receives an `.html` extension:
+keeps its directory structure and receives an `.html` extension on disk:
 
 ```text
-pages/index.md          -> docs/index.html
-pages/guides/install.md -> docs/guides/install.html
+Source path             Output file               Public route
+pages/index.md          docs/index.html            /
+pages/guides/index.md   docs/guides/index.html     /guides/
+pages/guides/install.md docs/guides/install.html   /guides/install.html
 ```
+
+SMGen publishes a file named `index.html` through its directory route. Generated
+menus, sitemaps, RSS feeds, `llms.txt`, search results, and assistant sources use
+the route while static hosts continue to serve the physical file. A name such as
+`api-index.md` remains `/api-index.html`.
 
 Run `smgen build` after an edit. On Linux, `smgen watch` rebuilds when a source,
 template, helper, asset, configuration, or hook file changes.

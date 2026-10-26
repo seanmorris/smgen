@@ -17,4 +17,10 @@ final class PageRecord
 		public readonly array $pluginFlags,
 	) {
 	}
+
+	/** Return the root-relative route published for this physical output file. */
+	public function publicPath(): string
+	{
+		return PublicUrl::fromOutputPath($this->destination);
+	}
 }

@@ -168,6 +168,19 @@ resolve_asset_url()
 	esac
 }
 
+public_output_path()
+{
+	local path=${1//\\//}
+	path=${path#/}
+	if [ "${path}" = "index.html" ]; then
+		printf '/\n'
+	elif [[ ${path} == */index.html ]]; then
+		printf '/%s\n' "${path%index.html}"
+	else
+		printf '/%s\n' "${path}"
+	fi
+}
+
 resolve_template_path()
 {
 	local candidate=$1
@@ -491,7 +504,7 @@ build_site_bash()
 		fi
 		template_file=$(mktemp "${WORK_DIR}/template.XXXXXX")
 
-		CURRENT_PAGE="/${destination}" \
+		CURRENT_PAGE="$(public_output_path "${destination}")" \
 		SMGEN_PAGE_FILE="${page_file}" \
 		SMGEN_CORE_DIR="${SCRIPT_DIR}" \
 		SMGEN_PROJECT_DIR="${PROJECT_DIR}" \

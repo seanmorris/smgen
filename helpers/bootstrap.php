@@ -3,6 +3,7 @@ require_once(__DIR__ . '/getConf.php');
 require_once(__DIR__ . '/frontmatter.php');
 require_once(__DIR__ . '/jsonld.php');
 require_once(__DIR__ . '/llms-lib.php');
+require_once(__DIR__ . '/public-url.php');
 require_once(__DIR__ . '/rss-lib.php');
 
 $pageFile = getenv('SMGEN_PAGE_FILE') ?: ($argv[1] ?? null);
@@ -48,7 +49,7 @@ function resolveAssetUrl($path)
 
 	if($assetPath === '')
 	{
-		return $baseUrl ?: '/';
+		return $baseUrl !== '' ? $baseUrl . '/' : '/';
 	}
 
 	return $baseUrl

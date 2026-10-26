@@ -1,5 +1,7 @@
 <?php
 
+require_once(__DIR__ . '/public-url.php');
+
 function rssArrayIsList($value)
 {
 	return is_array($value) && ($value === [] || array_keys($value) === range(0, count($value) - 1));
@@ -404,7 +406,7 @@ function rssResolveUrl($baseUrl, $path)
 
 function rssEncodeOutputUrl($baseUrl, $path)
 {
-	$path = str_replace(DIRECTORY_SEPARATOR, '/', (string) $path);
+	$path = smgenPublicOutputPath((string) $path);
 	$encoded = implode('/', array_map('rawurlencode', explode('/', ltrim($path, '/'))));
 	return rssResolveUrl($baseUrl, '/' . $encoded);
 }

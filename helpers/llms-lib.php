@@ -1,6 +1,7 @@
 <?php
 
 require_once(__DIR__ . '/frontmatter.php');
+require_once(__DIR__ . '/public-url.php');
 
 function llmsConfiguration()
 {
@@ -99,7 +100,7 @@ function llmsEncodeOutputPath($path)
 function llmsOutputUrl($baseUrl, $outputPath)
 {
 	$baseUrl = rtrim($baseUrl, '/');
-	return $baseUrl . '/' . llmsEncodeOutputPath($outputPath);
+	return $baseUrl . llmsEncodeOutputPath(smgenPublicOutputPath($outputPath));
 }
 
 function llmsPageBody($path)

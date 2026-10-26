@@ -469,7 +469,7 @@ final class BuildEngine
 		$contributions = $this->pageContributions($plugins);
 		$styles = array_values(array_unique(array_merge($contributions['styles'], $siteStyles)));
 		$pageEnvironment = array_merge($environment, [
-			'CURRENT_PAGE' => '/' . $page->destination,
+			'CURRENT_PAGE' => $page->publicPath(),
 			'SMGEN_PAGE_FILE' => $page->source,
 			'STYLES' => implode("\n", $styles),
 			'SCRIPTS' => implode("\n", array_values(array_unique(array_merge($contributions['head'], $this->stringList($this->config->get('SCRIPTS'), 'SCRIPTS'))))),
@@ -776,6 +776,7 @@ final class BuildEngine
 		}
 		$base = rtrim((string) $this->config->get('BASE_URL'), '/');
 		$path = ltrim($path, '/');
+		if($path === '') return $base !== '' ? $base . '/' : '/';
 		return $base !== '' ? $base . '/' . $path : '/' . $path;
 	}
 

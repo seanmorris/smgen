@@ -9,6 +9,14 @@ document.addEventListener('DOMContentLoaded', () => {
 	const baseUrl = document.querySelector('meta[name="smgen-base-url"]')?.content.replace(/\/$/, '') || '';
 	let readerPromise;
 
+	/** Convert one extensionless search result path to its published page URL. */
+	const resultUrl = resultPath => {
+		const path = String(resultPath).replace(/^\//, '');
+		if(path === 'index') return `${baseUrl}/`;
+		if(path.endsWith('/index')) return `${baseUrl}/${path.slice(0, -'index'.length)}`;
+		return `${baseUrl}/${path}.html`;
+	};
+
 	const clearResults = () => {
 		resultsElement?.replaceChildren();
 	};
@@ -58,7 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				const item = document.createElement('li');
 				const link = document.createElement('a');
 				link.textContent = result.title;
-				link.href = `${baseUrl}/${String(result.path).replace(/^\//, '')}.html`;
+				link.href = resultUrl(result.path);
 				item.append(link);
 				return item;
 			});

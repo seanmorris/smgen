@@ -2,12 +2,14 @@
 
 require_once(__DIR__ . '/frontmatter.php');
 require_once(__DIR__ . '/getConf.php');
+require_once(__DIR__ . '/public-url.php');
 
 function navigationOutputPath($pathname, $rootPath)
 {
 	$relative = substr($pathname, strlen($rootPath) + 1);
 	$relative = preg_replace('~^\.smgen-generated/[^/]+/~', '', str_replace(DIRECTORY_SEPARATOR, '/', $relative));
-	return '/' . preg_replace('/\.[^.]+$/', '.html', str_replace(DIRECTORY_SEPARATOR, '/', $relative));
+	$output = preg_replace('/\.[^.]+$/', '.html', str_replace(DIRECTORY_SEPARATOR, '/', $relative));
+	return smgenPublicOutputPath($output);
 }
 
 function navigationTitle($filename, $metadata)

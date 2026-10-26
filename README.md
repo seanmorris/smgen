@@ -137,7 +137,7 @@ fails, SMGen restores the previous output.
 
 The hosted documentation is the canonical reference:
 
-- [Getting Started](https://seanmorris.github.io/smgen/index.html)
+- [Getting Started](https://seanmorris.github.io/smgen/)
 - [Writing Pages](https://seanmorris.github.io/smgen/writing-pages.html)
 - [CLI Reference](https://seanmorris.github.io/smgen/cli.html)
 - [Configuration](https://seanmorris.github.io/smgen/configuration.html)

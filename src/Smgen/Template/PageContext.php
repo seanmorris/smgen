@@ -74,7 +74,7 @@ final class PageContext
 	/** Return the root-relative generated URL used by navigation helpers. */
 	public function currentPage(): string
 	{
-		return '/' . $this->page->destination;
+		return $this->page->publicPath();
 	}
 
 	/** Escape a value for safe insertion into an HTML attribute or text node. */
@@ -94,7 +94,7 @@ final class PageContext
 		$assetPath = ltrim($path, '/');
 		if($assetPath === '')
 		{
-			return $baseUrl ?: '/';
+			return $baseUrl !== '' ? $baseUrl . '/' : '/';
 		}
 		return $baseUrl ? $baseUrl . '/' . $assetPath : '/' . $assetPath;
 	}

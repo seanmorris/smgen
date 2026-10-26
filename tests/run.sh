@@ -304,8 +304,8 @@ test_env_base_url_overrides_same_origin_defaults()
 
 	assert_file_contains "${site}/docs/index.html" 'content="https://seanmorris.github.io/smgen"'
 	assert_file_contains "${site}/docs/index.html" 'href="https://seanmorris.github.io/smgen/icon-16.png"'
-	assert_file_contains "${site}/docs/index.html" 'href="https://seanmorris.github.io/smgen/index.html"'
-	assert_file_contains "${site}/docs/sitemap.xml" '<loc>https://seanmorris.github.io/smgen/index.html</loc>'
+	assert_file_contains "${site}/docs/index.html" 'href="https://seanmorris.github.io/smgen/"'
+	assert_file_contains "${site}/docs/sitemap.xml" '<loc>https://seanmorris.github.io/smgen/</loc>'
 }
 
 test_nested_static_assets_preserve_paths_on_build()
@@ -947,6 +947,100 @@ EOF
 	assert_file_excludes "${site}/docs/index.html" '<script>alert(1)</script>'
 }
 
+test_directory_index_pages_publish_clean_urls()
+{
+	begin_test "directory-index-urls"
+	local site
+	site="$(make_temp_site)"
+	CURRENT_SITE="${site}"
+	mkdir -p "${site}/pages/games"
+	cat > "${site}/.smgen.yaml" <<'EOF'
+PRODUCT_NAME: Route Test
+MENUS:
+  primary:
+    links:
+      - page: index.md
+        title: Home
+      - page: games/index.md
+        title: Games
+      - page: api-phonics-spatial-bounds-index.md
+        title: API Index
+MENU_REGIONS:
+  sidebar: [primary]
+RSS_FEEDS:
+  main:
+    title: Updates
+    description: Route test updates.
+    path: feed.xml
+    link: /
+LLMS:
+  title: Route Test
+  sections:
+    start:
+      title: Start
+EOF
+	cat > "${site}/pages/index.md" <<'EOF'
+---
+title: Home
+date: 2026-10-24
+feeds: [main]
+llms: start
+---
+
+# Home
+
+[Games](/games/index.html?view=all#play)
+EOF
+	cat > "${site}/pages/games/index.md" <<'EOF'
+---
+title: Games
+date: 2026-10-25
+feeds: [main]
+llms: start
+---
+
+# Games
+
+[Home](../index.html)
+EOF
+	cat > "${site}/pages/api-phonics-spatial-bounds-index.md" <<'EOF'
+---
+title: API Index
+date: 2026-10-26
+feeds: [main]
+llms: start
+---
+
+# API Index
+
+[External](https://example.org/index.html)
+EOF
+
+	(
+		cd "${site}"
+		BASE_URL=https://example.test/docs "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}.log" 2>&1
+	)
+
+	assert_file_exists "${site}/docs/index.html"
+	assert_file_exists "${site}/docs/games/index.html"
+	assert_file_exists "${site}/docs/api-phonics-spatial-bounds-index.html"
+	assert_file_contains "${site}/docs/index.html" 'href="https://example.test/docs/"'
+	assert_file_contains "${site}/docs/index.html" 'href="https://example.test/docs/games/"'
+	assert_file_contains "${site}/docs/index.html" 'href="https://example.test/docs/api-phonics-spatial-bounds-index.html"'
+	assert_file_contains "${site}/docs/index.html" 'href="/games/?view=all#play"'
+	assert_file_contains "${site}/docs/games/index.html" 'href="../"'
+	assert_file_contains "${site}/docs/api-phonics-spatial-bounds-index.html" 'href="https://example.org/index.html"'
+	assert_file_contains "${site}/docs/games/index.html" 'class="active-link" aria-current="page"'
+	assert_file_contains "${site}/docs/sitemap.xml" '<loc>https://example.test/docs/</loc>'
+	assert_file_contains "${site}/docs/sitemap.xml" '<loc>https://example.test/docs/games/</loc>'
+	assert_file_contains "${site}/docs/sitemap.xml" '<loc>https://example.test/docs/api-phonics-spatial-bounds-index.html</loc>'
+	assert_file_contains "${site}/docs/llms.txt" '](https://example.test/docs/)'
+	assert_file_contains "${site}/docs/llms.txt" '](https://example.test/docs/games/)'
+	assert_file_contains "${site}/docs/llms.txt" '](https://example.test/docs/api-phonics-spatial-bounds-index.html)'
+	assert_file_contains "${site}/docs/feed.xml" '<link>https://example.test/docs/games/</link>'
+	assert_file_contains "${site}/docs/feed.xml" '<link>https://example.test/docs/api-phonics-spatial-bounds-index.html</link>'
+}
+
 test_llms_txt_uses_page_and_directory_frontmatter()
 {
 	begin_test "llms-txt"
@@ -1047,7 +1141,7 @@ This index points to generated HTML.
 
 - [Shortcut](https://example.test/docs/guides/inherited/shortcut.html): Inherited shortcut description.
 - [Quick Start](https://example.test/docs/quick%20start.html)
-- [Start \[here\]](https://example.test/docs/index.html): Read the home page.
+- [Start \[here\]](https://example.test/docs/): Read the home page.
 
 ## Guides
 
@@ -1825,7 +1919,7 @@ PHP
 		cd "${site}"
 		SMGEN_ENGINE=php "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-isolated.log" 2>&1
 	)
-	assert_file_contains "${site}/docs/index.html" 'data-page="/index.html"'
+	assert_file_contains "${site}/docs/index.html" 'data-page="/"'
 	assert_file_contains "${site}/docs/second.html" 'data-page="/second.html"'
 }
 
@@ -1852,7 +1946,7 @@ PHP
 	)
 
 	[ "$(wc -l < "${site}/provider-loads.log")" -eq 1 ] || fail "expected reusable provider to load once"
-	assert_file_contains "${site}/docs/index.html" 'data-page="/index.html"'
+	assert_file_contains "${site}/docs/index.html" 'data-page="/"'
 	assert_file_contains "${site}/docs/second.html" 'data-page="/second.html"'
 }
 
@@ -2195,6 +2289,7 @@ main()
 	test_unsafe_output_and_core_asset_paths_are_rejected
 	test_search_is_optional_local_and_lazy
 	test_sitemap_encodes_paths_and_navigation_escapes_titles
+	test_directory_index_pages_publish_clean_urls
 	test_llms_txt_uses_page_and_directory_frontmatter
 	test_llms_validation_preserves_previous_output
 	test_llms_heading_fallback_respects_fence_delimiters

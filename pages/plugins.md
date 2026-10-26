@@ -157,7 +157,8 @@ The context has this stable `smgen/v1` shape:
 
 The `prepare` hook runs before navigation and page discovery. Its
 `paths.generatedPages` directory belongs to that plugin for the current build.
-A file such as `paths.generatedPages/api/index.md` produces `api/index.html`.
+A file such as `paths.generatedPages/api/index.md` produces `api/index.html` and
+publishes it at `/api/`.
 `paths.stage` and `paths.pageManifest` are null during this phase. SMGen
 removes the managed source directory after the build and clears marked files
 left by an interrupted build. `.smgen-generated` is reserved for this use.

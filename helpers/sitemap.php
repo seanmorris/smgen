@@ -1,6 +1,7 @@
 <?php
 
 require_once(__DIR__ . '/frontmatter.php');
+require_once(__DIR__ . '/public-url.php');
 
 /** Escape a value for safe placement in an XML text node. */
 function xmlEscape($value)
@@ -45,7 +46,7 @@ function generateSitemapDocument($baseUrl, $manifestPath)
 		echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . PHP_EOL;
 		foreach($pages as $page)
 		{
-			$url = $baseUrl . '/' . encodeUrlPath($page['output']);
+			$url = $baseUrl . encodeUrlPath(smgenPublicOutputPath($page['output']));
 			$metadata = parsePageFrontmatter($page['source']);
 			$modified = filemtime($page['source']);
 			if(array_key_exists('modified', $metadata))
