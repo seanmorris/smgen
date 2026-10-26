@@ -171,3 +171,15 @@ Ei
 mpeg
 namespaces
 xmlwriter
+itemtype
+json
+JSON
+jsonld
+ld
+LD
+microdata
+minified
+pageFile
+renderJsonLd
+TechArticle
+WebSite

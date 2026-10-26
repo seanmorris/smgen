@@ -71,6 +71,7 @@ SMGen-specific page fields include:
 - `feeds`: named RSS feed memberships as a list or boolean mapping.
 - `rss`: custom RSS item elements for pages selected into a feed.
 - `menus`: named menu memberships and per-menu link settings.
+- `jsonld`: JSON-LD structured data emitted by the default template.
 
 The default template also uses Pandoc metadata such as `pagetitle`, `author`,
 `description-meta`, and `canonical`. Custom templates may read any frontmatter
@@ -78,6 +79,66 @@ field that Pandoc exposes.
 
 Paths in `template`, `header`, and `footer` must resolve inside `TEMPLATE_DIR`.
 A path that escapes that directory fails the build before output replacement.
+<!-- </how> -->
+<!-- </what> -->
+
+## JSON-LD
+
+<!-- <what keywords="json-ld, schema.org, structured data, metadata script"> -->
+<!-- <how keywords="add json-ld, add schema.org metadata, jsonld frontmatter, rich results"> -->
+Set `jsonld` to a YAML mapping to add structured data to a page:
+
+```yaml
+---
+title: Install SMGen
+jsonld:
+  "@context": https://schema.org
+  "@type": TechArticle
+  headline: Install SMGen
+  description: Install SMGen and create a project.
+  author:
+    "@type": Person
+    name: Example Author
+---
+```
+
+The default template encodes the supplied mapping as one minified
+`application/ld+json` script in the document head. SMGen does not derive JSON-LD
+properties from other frontmatter. Keep the structured data consistent with the
+page's visible content.
+
+Use a YAML list to describe multiple top-level entities. SMGen writes the list
+as one JSON array in one script:
+
+```yaml
+jsonld:
+  - "@context": https://schema.org
+    "@type": WebSite
+    name: Example Site
+  - "@context": https://schema.org
+    "@type": Organization
+    name: Example Organization
+```
+
+`jsonld` applies only to the page that declares it. Directory `.fm.yaml` files
+do not supply or inherit it. SMGen checks that the top level is a mapping or a
+list of mappings, but it does not validate [schema.org](https://schema.org/)
+types or required properties. Check a generated page with Google's
+[Rich Results Test](https://search.google.com/test/rich-results) and consult the
+[JSON-LD 1.1 specification](https://www.w3.org/TR/json-ld11/) for the data model.
+
+The default template still supports the older `itemtype` and flat `microdata`
+fields. Omit them when `jsonld` describes the same entity. Existing pages may
+continue using them.
+
+Custom page templates must call the renderer inside `<head>`:
+
+```php
+<?php renderJsonLd($frontmatter, $pageFile); ?>
+```
+
+Projects created before SMGen 0.2.0 own an earlier copy of `templates/page.php`.
+Add the renderer call to that template before using `jsonld`.
 <!-- </how> -->
 <!-- </what> -->
 

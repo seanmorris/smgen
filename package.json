@@ -1,6 +1,6 @@
 {
   "name": "smgen",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Build static sites from Markdown with Pandoc, PHP templates, and Bash.",
   "keywords": [
     "static-site-generator",

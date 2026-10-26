@@ -513,6 +513,139 @@ EOF
 	assert_file_excludes "${site}/docs/index.html" 'class = "table-of-contents"'
 }
 
+test_jsonld_frontmatter()
+{
+	begin_test "jsonld-frontmatter"
+	local site
+	site="$(make_temp_site)"
+	CURRENT_SITE="${site}"
+
+	cat > "${site}/pages/index.md" <<'EOF'
+---
+title: JSON-LD
+itemtype: schema.org/TechArticle
+microdata:
+  headline: Legacy headline
+jsonld:
+  "@context": https://schema.org
+  "@type": TechArticle
+  headline: 'Cost is $10 and $title$'
+  description: '</script><script>alert("jsonld")</script>'
+  name: Café
+  isAccessibleForFree: true
+  wordCount: 12
+  rating: 4.5
+  author:
+    "@type": Person
+    name: 'Jane & "J.D." Doe'
+  keywords:
+    - static sites
+    - documentation
+---
+
+# JSON-LD
+EOF
+	cat > "${site}/pages/multiple.md" <<'EOF'
+---
+title: Multiple entities
+jsonld:
+  - "@context": https://schema.org
+    "@type": WebSite
+    name: Example Site
+  - "@context": https://schema.org
+    "@type": Organization
+    name: Example Organization
+---
+
+# Multiple entities
+EOF
+	cat > "${site}/pages/plain.md" <<'EOF'
+---
+title: Plain page
+---
+
+# Plain page
+EOF
+
+	(
+		cd "${site}"
+		"${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}.log" 2>&1
+	)
+
+	php -r '
+		$html = file_get_contents($argv[1]);
+		if(substr_count($html, "<script type=\"application/ld+json\">") !== 1) exit(1);
+		if(!preg_match("~<script type=\"application/ld\\+json\">(.*?)</script>~s", $html, $match)) exit(2);
+		if(strpos($html, $match[0]) > strpos($html, "</head>")) exit(3);
+		$actual = json_decode($match[1], true, 512, JSON_THROW_ON_ERROR);
+		$expected = [
+			"@context" => "https://schema.org",
+			"@type" => "TechArticle",
+			"headline" => "Cost is \$10 and \$title\$",
+			"description" => "</script><script>alert(\"jsonld\")</script>",
+			"name" => "Café",
+			"isAccessibleForFree" => true,
+			"wordCount" => 12,
+			"rating" => 4.5,
+			"author" => ["@type" => "Person", "name" => "Jane & \"J.D.\" Doe"],
+			"keywords" => ["static sites", "documentation"],
+		];
+		exit($actual === $expected ? 0 : 4);
+	' "${site}/docs/index.html" || fail "generated JSON-LD did not match page frontmatter"
+	php -r '
+		$html = file_get_contents($argv[1]);
+		if(substr_count($html, "<script type=\"application/ld+json\">") !== 1) exit(1);
+		if(!preg_match("~<script type=\"application/ld\\+json\">(.*?)</script>~s", $html, $match)) exit(2);
+		$actual = json_decode($match[1], true, 512, JSON_THROW_ON_ERROR);
+		$expected = [
+			["@context" => "https://schema.org", "@type" => "WebSite", "name" => "Example Site"],
+			["@context" => "https://schema.org", "@type" => "Organization", "name" => "Example Organization"],
+		];
+		exit($actual === $expected ? 0 : 3);
+	' "${site}/docs/multiple.html" || fail "generated JSON-LD did not preserve the entity list"
+	assert_file_contains "${site}/docs/index.html" 'itemscope itemtype = "https://schema.org/TechArticle"'
+	assert_file_contains "${site}/docs/index.html" 'itemprop = "headline" content = "Legacy headline"'
+	assert_file_excludes "${site}/docs/index.html" '<script>alert("jsonld")</script>'
+	assert_file_excludes "${site}/docs/plain.html" 'application/ld+json'
+
+	cat > "${site}/pages/index.md" <<'EOF'
+---
+title: Invalid JSON-LD
+jsonld:
+---
+
+# Replacement
+EOF
+	(
+		cd "${site}"
+		assert_command_fails "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-null.log" 2>&1
+	)
+	assert_file_contains "${DEBUG_DIR}/${CURRENT_TEST}-null.log" 'JSON-LD frontmatter must be a mapping or list of mappings:'
+	assert_file_contains "${DEBUG_DIR}/${CURRENT_TEST}-null.log" 'pages/index.md'
+	assert_file_contains "${site}/docs/index.html" 'Cost is $10 and $title$'
+	assert_file_excludes "${site}/docs/index.html" 'Replacement'
+
+	cat > "${site}/pages/index.md" <<'EOF'
+---
+title: Invalid JSON-LD list
+jsonld:
+  - "@context": https://schema.org
+    "@type": WebSite
+  - invalid
+---
+
+# Replacement
+EOF
+	(
+		cd "${site}"
+		assert_command_fails "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-list.log" 2>&1
+	)
+	assert_file_contains "${DEBUG_DIR}/${CURRENT_TEST}-list.log" 'JSON-LD frontmatter entry 2 must be a mapping:'
+	assert_file_contains "${DEBUG_DIR}/${CURRENT_TEST}-list.log" 'pages/index.md'
+	assert_file_contains "${site}/docs/index.html" 'Cost is $10 and $title$'
+	assert_file_excludes "${site}/docs/index.html" 'Replacement'
+}
+
 test_successful_build_replaces_the_complete_output()
 {
 	begin_test "replace-output"
@@ -1368,6 +1501,7 @@ test_npm_package_installs_a_buildable_cli()
 		npm_config_dry_run=false npm install --ignore-scripts --no-audit --no-fund --no-package-lock "${archive}" > "${DEBUG_DIR}/${CURRENT_TEST}-install.log" 2>&1
 	)
 	assert_file_exists "${consumer}/node_modules/smgen/helpers/bootstrap.php"
+	assert_file_exists "${consumer}/node_modules/smgen/helpers/jsonld.php"
 	assert_file_exists "${consumer}/node_modules/smgen/templates/page.php"
 	assert_file_exists "${consumer}/node_modules/smgen/static/default.css"
 	assert_file_exists "${consumer}/node_modules/smgen/.smgen-rc-default"
@@ -1411,6 +1545,7 @@ main()
 	test_project_can_select_specific_core_assets
 	test_yaml_lists_and_environment_precedence
 	test_frontmatter_controls_templates_navigation_and_toc
+	test_jsonld_frontmatter
 	test_successful_build_replaces_the_complete_output
 	test_failed_build_preserves_previous_output
 	test_early_build_failure_reports_original_error

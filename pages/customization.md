@@ -122,6 +122,7 @@ A minimal template can render named regions around Pandoc's page body:
   <title>$if(pagetitle)$${pagetitle}$else$${title}$endif$</title>
   $for(css)$<link rel="stylesheet" href="$css$" />$endfor$
   $styles.html()$
+  <?php renderJsonLd($frontmatter, $pageFile); ?>
 </head>
 <body>
   <?php if (menuRegionExists('header')): ?>
@@ -147,6 +148,9 @@ template in this order:
 
 For a Markdown source, the extension-specific names are `md-page.php` and
 `md-template.html`.
+
+Keep the `renderJsonLd` call when a custom template should emit the page's
+`jsonld` frontmatter.
 <!-- </how> -->
 
 ## Change Header and Footer Includes

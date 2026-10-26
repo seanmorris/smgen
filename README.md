@@ -11,6 +11,7 @@ HTML site.
 SMGen supports:
 
 - YAML frontmatter for pages and directories
+- JSON-LD structured data from page frontmatter
 - PHP and Pandoc templates
 - named menus with flat, tree, and timeline renderers
 - ordered menu plugins and alter hooks
