@@ -3,6 +3,46 @@ title: Getting Started
 weight: 0
 author:
   - name: Sean Morris
+jsonld:
+  "@context": https://schema.org
+  "@graph":
+    - "@type": WebSite
+      "@id": "https://seanmorris.github.io/smgen/#website"
+      url: https://seanmorris.github.io/smgen/
+      name: SMGen
+      description: Build static sites from Markdown with Pandoc, PHP templates, and Bash.
+      inLanguage: en
+      author:
+        "@id": "https://seanmorris.github.io/smgen/#author"
+    - "@type": WebPage
+      "@id": "https://seanmorris.github.io/smgen/#webpage"
+      url: https://seanmorris.github.io/smgen/
+      name: Getting Started
+      description: Build static sites from Markdown with Pandoc, PHP templates, and Bash.
+      inLanguage: en
+      isPartOf:
+        "@id": "https://seanmorris.github.io/smgen/#website"
+      about:
+        "@id": "https://seanmorris.github.io/smgen/#software"
+      mainEntity:
+        "@id": "https://seanmorris.github.io/smgen/#software"
+      author:
+        "@id": "https://seanmorris.github.io/smgen/#author"
+    - "@type": SoftwareSourceCode
+      "@id": "https://seanmorris.github.io/smgen/#software"
+      url: https://seanmorris.github.io/smgen/
+      name: SMGen
+      description: Build static sites from Markdown with Pandoc, PHP templates, and Bash.
+      codeRepository: https://github.com/seanmorris/smgen
+      license: https://www.apache.org/licenses/LICENSE-2.0
+      programmingLanguage:
+        - Bash
+        - PHP
+      author:
+        "@id": "https://seanmorris.github.io/smgen/#author"
+    - "@type": Person
+      "@id": "https://seanmorris.github.io/smgen/#author"
+      name: Sean Morris
 ---
 
 # SMGen

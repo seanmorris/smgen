@@ -183,3 +183,10 @@ pageFile
 renderJsonLd
 TechArticle
 WebSite
+SoftwareSourceCode
+WebPage
+codeRepository
+inLanguage
+isPartOf
+mainEntity
+programmingLanguage
