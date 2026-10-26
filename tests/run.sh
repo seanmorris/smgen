@@ -1490,7 +1490,7 @@ test_logo_preserves_its_aspect_ratio()
 test_npm_package_installs_a_buildable_cli()
 {
 	begin_test "npm-package"
-	local package_dir package_source archive_name archive consumer site fake_bin
+	local package_dir package_source archive_name archive consumer package_root site fake_bin
 	package_dir="$(mktemp -d "${TEMP_ROOT}/package.XXXXXX")"
 	package_source="$(mktemp -d "${TEMP_ROOT}/package-source.XXXXXX")"
 	node - "${ROOT_DIR}" "${package_source}" <<'NODE'
@@ -1518,11 +1518,12 @@ NODE
 		cd "${consumer}"
 		npm_config_dry_run=false npm install --ignore-scripts --no-audit --no-fund --no-package-lock "${archive}" > "${DEBUG_DIR}/${CURRENT_TEST}-install.log" 2>&1
 	)
-	assert_file_exists "${consumer}/node_modules/smgen/helpers/bootstrap.php"
-	assert_file_exists "${consumer}/node_modules/smgen/helpers/jsonld.php"
-	assert_file_exists "${consumer}/node_modules/smgen/templates/page.php"
-	assert_file_exists "${consumer}/node_modules/smgen/static/default.css"
-	assert_file_exists "${consumer}/node_modules/smgen/.smgen-rc-default"
+	package_root="${consumer}/node_modules/@seanmorris/smgen"
+	assert_file_exists "${package_root}/helpers/bootstrap.php"
+	assert_file_exists "${package_root}/helpers/jsonld.php"
+	assert_file_exists "${package_root}/templates/page.php"
+	assert_file_exists "${package_root}/static/default.css"
+	assert_file_exists "${package_root}/.smgen-rc-default"
 	"${consumer}/node_modules/.bin/smgen" help > "${DEBUG_DIR}/${CURRENT_TEST}-help.log"
 	assert_file_contains "${DEBUG_DIR}/${CURRENT_TEST}-help.log" 'Usage: smgen'
 
