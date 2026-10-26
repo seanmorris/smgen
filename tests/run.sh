@@ -1064,6 +1064,58 @@ EOF
 	assert_file_contains "${site}/docs/index.html" '<h1 id="hello">Hello</h1>'
 }
 
+test_llms_heading_fallback_respects_fence_delimiters()
+{
+	begin_test "llms-heading-fences"
+	local site
+	site="$(make_temp_site)"
+	CURRENT_SITE="${site}"
+
+	cat > "${site}/.smgen.yaml" <<'EOF'
+SEARCH_ENABLED: 0
+LLMS:
+  title: Example Docs
+  sections:
+    start:
+      title: Start Here
+EOF
+	cat > "${site}/pages/fence-length.md" <<'EOF'
+---
+llms: start
+---
+
+````
+```
+# Short fence is code
+```
+````
+
+# Length-safe title
+EOF
+	cat > "${site}/pages/fence-suffix.md" <<'EOF'
+---
+llms: start
+---
+
+````
+```` still code
+# Trailing text is code
+````
+
+# Suffix-safe title
+EOF
+
+	(
+		cd "${site}"
+		BASE_URL=https://example.test/docs "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}.log" 2>&1
+	)
+
+	assert_file_contains "${site}/docs/llms.txt" '- [Length-safe title](https://example.test/docs/fence-length.html)'
+	assert_file_contains "${site}/docs/llms.txt" '- [Suffix-safe title](https://example.test/docs/fence-suffix.html)'
+	assert_file_excludes "${site}/docs/llms.txt" 'Short fence is code'
+	assert_file_excludes "${site}/docs/llms.txt" 'Trailing text is code'
+}
+
 test_named_rss_feeds_use_page_flags_and_dates()
 {
 	begin_test "named-rss-feeds"
@@ -1754,6 +1806,7 @@ main()
 	test_sitemap_encodes_paths_and_navigation_escapes_titles
 	test_llms_txt_uses_page_and_directory_frontmatter
 	test_llms_validation_preserves_previous_output
+	test_llms_heading_fallback_respects_fence_delimiters
 	test_named_rss_feeds_use_page_flags_and_dates
 	test_rss_validation_preserves_sources_and_output
 	test_archive_navigation_builds_static_calendar_and_timeline

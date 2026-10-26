@@ -137,22 +137,30 @@ function llmsFirstHeading($path)
 
 	foreach($lines as $line)
 	{
-		if(preg_match('/^ {0,3}(`{3,}|~{3,})/', $line, $match))
+		if($fence !== null)
 		{
-			$marker = $match[1][0];
-			if($fence === null)
-			{
-				$fence = $marker;
-			}
-			elseif($fence === $marker)
+			if(
+				preg_match('/^ {0,3}(`+|~+)[ \t]*$/', $line, $match)
+				&& $match[1][0] === $fence['marker']
+				&& strlen($match[1]) >= $fence['length']
+			)
 			{
 				$fence = null;
 			}
 			continue;
 		}
-		if($fence !== null)
+
+		if(preg_match('/^ {0,3}(`{3,}|~{3,})(.*)$/', $line, $match))
 		{
-			continue;
+			$marker = $match[1][0];
+			if($marker !== '`' || strpos($match[2], '`') === false)
+			{
+				$fence = [
+					'marker' => $marker,
+					'length' => strlen($match[1]),
+				];
+				continue;
+			}
 		}
 
 		if(preg_match('/^ {0,3}#[ \t]+(.+)$/u', $line, $match))
