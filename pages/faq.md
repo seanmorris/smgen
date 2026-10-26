@@ -1,6 +1,9 @@
 ---
 title: FAQ and Troubleshooting
 weight: 7
+llms:
+  section: optional
+  description: Diagnose common dependency, build, asset, navigation, and deployment problems.
 ---
 
 # FAQ and Troubleshooting

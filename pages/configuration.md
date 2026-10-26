@@ -1,6 +1,9 @@
 ---
 title: Configuration
 weight: 3
+llms:
+  section: reference
+  description: Configure paths, assets, search, menus, feeds, and build behavior.
 ---
 
 # Configuration
@@ -61,7 +64,7 @@ form is accepted.
 - `HELPERS_DIR`: project helper override directory. Default: `./helpers`.
 
 All relative paths resolve from the current working directory. Project copies
-of `domain.lua`, `navigation-data.php`, `rss.php`, `sitemap.php`, and
+of `domain.lua`, `navigation-data.php`, `llms.php`, `rss.php`, `sitemap.php`, and
 `navbar.php` can override their documented core behavior through
 `HELPERS_DIR`. Template selection and asset copying reject paths that escape
 their configured roots.
@@ -172,6 +175,29 @@ RSS_FEEDS:
 
 See [RSS Feeds](rss.html) for feed definitions, page membership, dates, and
 custom channel and item data.
+
+## llms.txt
+
+`LLMS` is a mapping that enables a curated Markdown index of selected HTML
+pages. Define the index title, summary, optional details, and named sections in
+`.smgen.yaml` or an environment-specific YAML file:
+
+```yaml
+LLMS:
+  title: Example Documentation
+  summary: Build and publish an Example site.
+  sections:
+    start:
+      title: Start Here
+      weight: 0
+    reference:
+      title: Reference
+      weight: 20
+```
+
+The build writes `/llms.txt` only when `LLMS` is enabled. See
+[llms.txt](llms.html) for page and directory selection, fallback fields, output
+format, and template discovery.
 
 ## Executables and Proofreading
 

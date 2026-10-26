@@ -16,6 +16,7 @@ SMGen supports:
 - named menus with flat, tree, and timeline renderers
 - ordered menu plugins and alter hooks
 - named RSS 2.0 feeds with YAML channel and item data
+- curated `llms.txt` indexes from page and directory frontmatter
 - sitemap generation
 - optional local search through `smgen-search`
 - atomic output replacement with rollback after failed builds
@@ -138,6 +139,7 @@ The hosted documentation is the canonical reference:
 - [Configuration](https://seanmorris.github.io/smgen/configuration.html)
 - [Navigation and Plugins](https://seanmorris.github.io/smgen/navigation.html)
 - [RSS Feeds](https://seanmorris.github.io/smgen/rss.html)
+- [llms.txt](https://seanmorris.github.io/smgen/llms.html)
 - [Customization](https://seanmorris.github.io/smgen/customization.html)
 - [Deployment](https://seanmorris.github.io/smgen/deployment.html)
 - [FAQ and Troubleshooting](https://seanmorris.github.io/smgen/faq.html)
@@ -156,7 +158,8 @@ bash ./tests/run.sh
 
 The regression suite covers configuration precedence, frontmatter, templates,
 output rollback, hooks, path safety, static assets, search, sitemap output,
-RSS output, legacy navigation, named menus, plugins, and timeline dates.
+`llms.txt`, RSS output, legacy navigation, named menus, plugins, and timeline
+dates.
 
 ### Publish a Release
 

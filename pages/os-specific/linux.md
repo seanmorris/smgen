@@ -1,5 +1,8 @@
 ---
 title: Linux
+llms:
+  section: optional
+  description: Install SMGen dependencies and file watching tools on Linux.
 ---
 
 # Install on Linux

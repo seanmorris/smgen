@@ -1,6 +1,9 @@
 ---
 title: Writing Pages
 weight: 1
+llms:
+  section: start
+  description: Write Markdown pages and configure page or directory frontmatter.
 ---
 
 # Writing Pages
@@ -50,6 +53,8 @@ archive: true
 feeds: [main, releases]
 menus:
   documentation: true
+llms:
+  section: guides
 ---
 ```
 
@@ -72,6 +77,7 @@ SMGen-specific page fields include:
 - `rss`: custom RSS item elements for pages selected into a feed.
 - `menus`: named menu memberships and per-menu link settings.
 - `jsonld`: JSON-LD structured data emitted by the default template.
+- `llms`: membership and link metadata for the generated `llms.txt` index.
 
 The default template also uses Pandoc metadata such as `pagetitle`, `author`,
 `description-meta`, and `canonical`. Custom templates may read any frontmatter
@@ -221,6 +227,8 @@ menus:
   documentation:
     title: User Guides
     weight: 10
+llms:
+  section: guides
 ```
 
 Directory fields include:
@@ -230,6 +238,10 @@ Directory fields include:
 - `open`: initial expansion state. Default: `true`.
 - `leftBarLink`: include the directory and its descendants in legacy navigation.
 - `menus`: named flat or tree menus that receive the directory as a group.
+- `llms`: inherited `llms.txt` section and link defaults for descendants.
 
 A `.fm.yaml` file may contain a plain YAML mapping or use page-style opening and
 closing `---` markers.
+
+See [llms.txt](llms.html) for site configuration, inherited selection, and
+field precedence.

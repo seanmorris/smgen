@@ -121,6 +121,13 @@ assert_file_excludes()
 	fi
 }
 
+assert_files_equal()
+{
+	local expected="$1"
+	local actual="$2"
+	diff -u "${expected}" "${actual}" || fail "expected files to match: ${expected} ${actual}"
+}
+
 begin_test()
 {
 	CURRENT_TEST="$1"
@@ -199,7 +206,9 @@ test_default_build_generates_expected_output()
 	assert_file_exists "${site}/docs/main.js"
 	assert_file_excludes "${site}/docs/index.html" '/archive.css'
 	assert_file_excludes "${site}/docs/index.html" 'application/rss+xml'
+	assert_file_excludes "${site}/docs/index.html" 'href="/llms.txt"'
 	assert_file_missing "${site}/docs/archive.css"
+	assert_file_missing "${site}/docs/llms.txt"
 }
 
 test_custom_output_dir_builds_and_links_sitemap()
@@ -887,6 +896,174 @@ EOF
 	assert_file_excludes "${site}/docs/index.html" '<script>alert(1)</script>'
 }
 
+test_llms_txt_uses_page_and_directory_frontmatter()
+{
+	begin_test "llms-txt"
+	local site expected
+	site="$(make_temp_site)"
+	CURRENT_SITE="${site}"
+	mkdir -p "${site}/pages/guides"
+
+	cat > "${site}/.smgen.yaml" <<'EOF'
+SEARCH_ENABLED: 0
+LLMS:
+  title: Example [Docs]
+  summary: |
+    A small site index.
+    Use the links below.
+  details: |
+    This index points to generated HTML.
+  sections:
+    guides:
+      title: Guides
+      weight: 20
+    start:
+      title: Start Here
+      weight: 0
+EOF
+	cat > "${site}/pages/index.md" <<'EOF'
+---
+title: Home
+description-meta: Read the home page.
+description: This lower-priority description should not appear.
+weight: 50
+llms:
+  section: start
+  title: Start [here]
+  weight: 10
+---
+
+# Home
+EOF
+	cat > "${site}/pages/quick start.md" <<'EOF'
+---
+llms: start
+---
+
+# Quick Start
+EOF
+	cat > "${site}/pages/guides/.fm.yaml" <<'EOF'
+llms:
+  section: guides
+EOF
+	cat > "${site}/pages/guides/setup.md" <<'EOF'
+---
+title: Setup
+description: Install the tools, then build the site.
+---
+
+# Setup
+EOF
+	cat > "${site}/pages/guides/hidden.md" <<'EOF'
+---
+title: Hidden Guide
+llms: false
+---
+
+# Hidden Guide
+EOF
+
+	(
+		cd "${site}"
+		BASE_URL=https://example.test/docs "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}.log" 2>&1
+	)
+
+	expected="${site}/expected-llms.txt"
+	cat > "${expected}" <<'EOF'
+# Example [Docs]
+
+> A small site index.
+> Use the links below.
+
+This index points to generated HTML.
+
+## Start Here
+
+- [Quick Start](https://example.test/docs/quick%20start.html)
+- [Start \[here\]](https://example.test/docs/index.html): Read the home page.
+
+## Guides
+
+- [Setup](https://example.test/docs/guides/setup.html): Install the tools, then build the site.
+EOF
+	assert_file_exists "${site}/docs/llms.txt"
+	assert_files_equal "${expected}" "${site}/docs/llms.txt"
+	assert_file_contains "${site}/docs/index.html" 'rel="describedby" type="text/markdown" href="https://example.test/docs/llms.txt"'
+	assert_file_excludes "${site}/docs/llms.txt" 'Hidden Guide'
+	assert_file_excludes "${site}/docs/llms.txt" 'lower-priority description'
+}
+
+test_llms_validation_preserves_previous_output()
+{
+	begin_test "llms-validation"
+	local site
+	site="$(make_temp_site)"
+	CURRENT_SITE="${site}"
+	(
+		cd "${site}"
+		"${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-first.log" 2>&1
+	)
+
+	cat > "${site}/.smgen.yaml" <<'EOF'
+SEARCH_ENABLED: 0
+LLMS:
+  title: Example Docs
+  sections:
+    start:
+      title: Start Here
+EOF
+	cat > "${site}/pages/index.md" <<'EOF'
+---
+title: Replacement
+llms:
+  section: missing
+---
+
+# Replacement
+EOF
+	(
+		cd "${site}"
+		assert_command_fails "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-section.log" 2>&1
+	)
+	assert_file_contains "${DEBUG_DIR}/${CURRENT_TEST}-section.log" 'Unknown llms.txt section missing'
+	assert_file_contains "${site}/docs/index.html" '<h1 id="hello">Hello</h1>'
+	assert_file_missing "${site}/docs/llms.txt"
+
+	cat > "${site}/pages/index.md" <<'EOF'
+---
+title: Replacement
+llms:
+  section: start
+---
+
+# Replacement
+EOF
+	printf '%s\n' 'handwritten index' > "${site}/static/llms.txt"
+	(
+		cd "${site}"
+		assert_command_fails "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-collision.log" 2>&1
+	)
+	assert_file_contains "${DEBUG_DIR}/${CURRENT_TEST}-collision.log" 'llms.txt collides with an existing output file'
+	assert_file_contains "${site}/docs/index.html" '<h1 id="hello">Hello</h1>'
+
+	rm "${site}/static/llms.txt"
+	cat > "${site}/.smgen.yaml" <<'EOF'
+SEARCH_ENABLED: 0
+LLMS:
+  title: Example Docs
+  unknown: value
+  sections:
+    start:
+      title: Start Here
+EOF
+	(
+		cd "${site}"
+		assert_command_fails "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-field.log" 2>&1
+	)
+	assert_file_contains "${DEBUG_DIR}/${CURRENT_TEST}-field.log" 'Unknown LLMS configuration field unknown'
+	assert_file_contains "${site}/docs/index.html" '<h1 id="hello">Hello</h1>'
+}
+
 test_named_rss_feeds_use_page_flags_and_dates()
 {
 	begin_test "named-rss-feeds"
@@ -1520,6 +1697,7 @@ NODE
 	)
 	assert_file_exists "${consumer}/node_modules/smgen/helpers/bootstrap.php"
 	assert_file_exists "${consumer}/node_modules/smgen/helpers/jsonld.php"
+	assert_file_exists "${consumer}/node_modules/smgen/helpers/llms.php"
 	assert_file_exists "${consumer}/node_modules/smgen/templates/page.php"
 	assert_file_exists "${consumer}/node_modules/smgen/static/default.css"
 	assert_file_exists "${consumer}/node_modules/smgen/.smgen-rc-default"
@@ -1574,6 +1752,8 @@ main()
 	test_unsafe_output_and_core_asset_paths_are_rejected
 	test_search_is_optional_local_and_lazy
 	test_sitemap_encodes_paths_and_navigation_escapes_titles
+	test_llms_txt_uses_page_and_directory_frontmatter
+	test_llms_validation_preserves_previous_output
 	test_named_rss_feeds_use_page_flags_and_dates
 	test_rss_validation_preserves_sources_and_output
 	test_archive_navigation_builds_static_calendar_and_timeline

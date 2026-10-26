@@ -2,6 +2,7 @@
 require(__DIR__ . '/getConf.php');
 require(__DIR__ . '/frontmatter.php');
 require(__DIR__ . '/jsonld.php');
+require(__DIR__ . '/llms-lib.php');
 require(__DIR__ . '/rss-lib.php');
 
 $pageFile = getenv('SMGEN_PAGE_FILE') ?: ($argv[1] ?? null);

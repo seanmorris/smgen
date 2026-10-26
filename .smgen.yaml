@@ -28,6 +28,26 @@ BODY_SCRIPTS:
 SEARCH_ENABLED: 1
 SEARCH_READER: /vendor/smgen-search/SearchReader.mjs
 
+LLMS:
+  title: SMGen
+  summary: Build static sites from Markdown with Pandoc, PHP templates, and Bash.
+  details: |
+    SMGen produces portable static files. Published sites do not require PHP
+    or an application server.
+  sections:
+    start:
+      title: Start Here
+      weight: 0
+    guides:
+      title: Guides
+      weight: 10
+    reference:
+      title: Reference
+      weight: 20
+    optional:
+      title: Optional
+      weight: 100
+
 ICONS:
   - class: github-icon
     title: github

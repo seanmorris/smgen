@@ -1,6 +1,9 @@
 ---
 title: RSS Feeds
 weight: 4.5
+llms:
+  section: guides
+  description: Generate named RSS feeds from page dates, flags, and custom YAML data.
 ---
 
 # RSS Feeds

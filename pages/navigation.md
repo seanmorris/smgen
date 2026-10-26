@@ -1,6 +1,9 @@
 ---
 title: Navigation and Plugins
 weight: 4
+llms:
+  section: guides
+  description: Define static menus, regions, plugins, and publication timelines.
 ---
 
 # Navigation and Plugins

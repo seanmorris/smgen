@@ -1,6 +1,9 @@
 ---
 title: Customization
 weight: 5
+llms:
+  section: guides
+  description: Add assets, change templates and themes, or override build helpers.
 ---
 
 # Customization
@@ -168,8 +171,8 @@ Both paths must resolve inside `TEMPLATE_DIR`.
 ## Override Helpers
 
 Set `HELPERS_DIR` to a project helper directory. SMGen checks it for
-`domain.lua`, `navigation-data.php`, `rss.php`, and `sitemap.php` before using
-the built-in versions. A project `navbar.php` may define a legacy
+`domain.lua`, `llms.php`, `navigation-data.php`, `rss.php`, and `sitemap.php`
+before using the built-in versions. A project `navbar.php` may define a legacy
 `renderNavBar()` while the core named-menu functions remain available.
 
 Helper overrides execute as part of the build and receive the same environment

@@ -1,6 +1,9 @@
 ---
 title: CLI Reference
 weight: 2
+llms:
+  section: reference
+  description: Run builds, development servers, proofreading, and project initialization.
 ---
 
 # CLI Reference

@@ -1,6 +1,9 @@
 ---
 title: Getting Started
 weight: 0
+llms:
+  section: start
+  description: Install SMGen, create a site, and build its first page.
 author:
   - name: Sean Morris
 jsonld:
@@ -165,5 +168,6 @@ smgen watch
 - [Configuration](configuration.html): precedence, defaults, assets, paths, and search
 - [Navigation and Plugins](navigation.html): menus, regions, timelines, and plugins
 - [RSS Feeds](rss.html): named feeds, page membership, dates, and output
+- [llms.txt](llms.html): a curated machine-readable index of generated pages
 - [Customization](customization.html): templates, themes, and injected assets
 - [Deployment](deployment.html): static hosting and GitHub Pages

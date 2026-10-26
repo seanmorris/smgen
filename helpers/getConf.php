@@ -34,6 +34,7 @@ const DEFAULTS = [
 	'MENUS' => [],
 	'MENU_REGIONS' => [],
 	'RSS_FEEDS' => [],
+	'LLMS' => [],
 ];
 
 const LIST_CONFIG_KEYS = [

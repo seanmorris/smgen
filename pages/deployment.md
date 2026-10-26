@@ -1,6 +1,9 @@
 ---
 title: Deployment
 weight: 6
+llms:
+  section: guides
+  description: Publish the generated files on a static host or GitHub Pages.
 ---
 
 # Deployment

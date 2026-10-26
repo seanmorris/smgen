@@ -1,5 +1,8 @@
 ---
 title: macOS
+llms:
+  section: optional
+  description: Install SMGen dependencies on macOS with Homebrew and PECL.
 ---
 
 # Install on macOS
