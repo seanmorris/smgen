@@ -51,6 +51,7 @@ environment:
 - `HEADER`: default header include. Default: `templates/header.php`.
 - `FOOTER`: default footer include. Default: `templates/footer.php`.
 - `DEV_PORT`: port used by `serve` and `watch`. Default: `8000`.
+- `SMGEN_ENGINE`: build implementation, `php` or `bash`. Default: `php`.
 
 SMGen removes a trailing slash from `BASE_URL` when it joins URLs, so either
 form is accepted.
@@ -148,12 +149,27 @@ These legacy settings remain supported:
 - `NAVIGATION_WIDGETS`: ordered `tree` and `archive` widgets. Default: `tree`.
 - `ARCHIVE_TITLE`: heading for the legacy archive widget. Default: `Archive`.
 
-`PLUGINS` is an ordered list of menu plugin manifest paths. It accepts a YAML
-sequence or newline-separated shell value.
+`PLUGINS` is an ordered list of plugin manifest paths, local npm package names,
+or structured activations. Structured entries can set `use`, `options`,
+`pages`, and `watch`:
+
+```yaml
+PLUGINS:
+  - use: smgen-assistant
+    options:
+      config: .smgen-assistant.yaml
+    pages:
+      include: ['**/*']
+```
+
+Use YAML for structured entries. Shell configuration and environment variables
+accept newline-separated manifest paths and package names.
 
 `MENUS` and `MENU_REGIONS` are structured mappings and belong in
 `.smgen.yaml` or an environment-specific YAML file. See
 [Navigation and Plugins](navigation.html) for their schema and rendering API.
+See [Build Plugins](plugins.html) for versioned manifests, page selectors,
+assets, hooks, generated pages, and watch paths.
 
 ## RSS Feeds
 
@@ -203,7 +219,7 @@ format, and template discovery.
 
 - `PHP`: PHP command. Default: `php`.
 - `PANDOC`: Pandoc command. Default: `pandoc`.
-- `YQ`: `yq` command. Default: `yq`.
+- `YQ`: `yq` command used by the Bash fallback. Default: `yq`.
 - `SMG_SEARCH`: search index command. Default: `smgen-search`.
 - `ASPELL`: spell-check command. Default: `aspell`.
 - `ASPELL_DICT`: personal dictionary path. Default: `aspell.txt`.
@@ -216,7 +232,9 @@ Place executable shell logic in either project hook:
 - `after-smgen.sh`: runs after the staged output replaces the previous output.
 
 SMGen runs hooks with Bash. A failed before hook stops the build before output
-replacement. A failed after hook restores the previous output.
+replacement. A failed after hook restores the previous output. Versioned
+plugin hooks run against staged output and are described in
+[Build Plugins](plugins.html).
 
 ## Output Ownership
 

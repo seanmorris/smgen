@@ -327,4 +327,7 @@ function rssGenerateFeeds($baseUrl, $buildDir, $manifestPath)
 	}
 }
 
-rssGenerateFeeds((string) ($argv[1] ?? ''), $argv[2] ?? '', $argv[3] ?? '');
+if(realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === __FILE__)
+{
+	rssGenerateFeeds((string) ($argv[1] ?? ''), $argv[2] ?? '', $argv[3] ?? '');
+}

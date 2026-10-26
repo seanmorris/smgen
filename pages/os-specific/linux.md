@@ -7,11 +7,11 @@ llms:
 
 # Install on Linux
 
-SMGen requires Bash 4 or newer, PHP CLI with the YAML extension, mikefarah
-`yq` 4, and Pandoc. RSS feed generation requires XMLWriter, available in the
-`php-xml` package on Debian, Ubuntu, and Fedora. Install `curl` for
-initialization and updates. Install `inotify-tools` for `smgen watch` and
-`aspell` for proofreading.
+SMGen requires Bash 4 or newer, PHP 8.1 or newer with the YAML extension, and Pandoc.
+RSS feed generation requires XMLWriter, available in the `php-xml` package on
+Debian, Ubuntu, and Fedora. Install `curl` for initialization and updates.
+Install `inotify-tools` for `smgen watch` and `aspell` for proofreading. The
+Bash compatibility engine also requires mikefarah `yq` 4.
 
 ## Debian and Ubuntu
 
@@ -33,8 +33,9 @@ pacman -Syu bash php php-yaml pandoc curl inotify-tools aspell
 
 ## Install `yq`
 
-Package repositories may contain another program named `yq`. Check the version
-and install the mikefarah release when needed:
+Install `yq` when a project uses `SMGEN_ENGINE=bash`. Package repositories may
+contain another program with that name. Check the version and install the
+mikefarah release when needed:
 
 ```bash
 YQ_VERSION=v4.47.2

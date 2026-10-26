@@ -28,9 +28,16 @@ BODY_SCRIPTS:
 SEARCH_ENABLED: 1
 SEARCH_READER: /vendor/smgen-search/SearchReader.mjs
 
+PLUGINS:
+  - use: smgen-assistant
+    options:
+      config: .smgen-assistant.yaml
+    watch:
+      - .smgen-assistant.yaml
+
 LLMS:
   title: SMGen
-  summary: Build static sites from Markdown with Pandoc, PHP templates, and Bash.
+  summary: Build static sites from Markdown with Pandoc, PHP templates, and versioned plugins.
   details: |
     SMGen produces portable static files. Published sites do not require PHP
     or an application server.

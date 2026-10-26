@@ -1,7 +1,7 @@
 {
   "name": "smgen",
-  "version": "0.2.0",
-  "description": "Build static sites from Markdown with Pandoc, PHP templates, and Bash.",
+  "version": "0.3.0",
+  "description": "Build static sites from Markdown with Pandoc, PHP templates, and versioned plugins.",
   "keywords": [
     "static-site-generator",
     "markdown",
@@ -24,7 +24,9 @@
   },
   "files": [
     ".smgen-rc-default",
+    "bin",
     "helpers",
+    "src",
     "templates",
     "smgen.sh",
     "static/archive.css",
@@ -70,6 +72,6 @@
     "access": "public"
   },
   "devDependencies": {
-    "smgen-assistant": "git+https://github.com/seanmorris/smgen-assistant.git#cd572c10b6162a7b8d63c948a85297e7215896d9"
+    "smgen-assistant": "git+https://github.com/seanmorris/smgen-assistant.git#076882601480ca689a6d7b661077d8d45cd2fbfa"
   }
 }

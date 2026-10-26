@@ -16,7 +16,7 @@ SCALAR_CONFIG_KEYS=(
 	BASE_URL OUTPUT_DIR PAGES_DIR TEMPLATE_DIR STATIC_DIR HELPERS_DIR
 	DEFAULT_THEME PRODUCT_NAME ORGANIZATION TAGLINE TITLE_PREFIX HIGHLIGHT_STYLE
 	HEADER FOOTER DEV_PORT INHERIT_CORE_STATIC SEARCH_ENABLED SEARCH_READER ARCHIVE_TITLE
-	PHP PANDOC YQ SMG_SEARCH ASPELL ASPELL_DICT SMGEN_ENVIRONMENT environment
+	PHP PANDOC YQ SMG_SEARCH ASPELL ASPELL_DICT SMGEN_ENVIRONMENT environment SMGEN_ENGINE
 )
 LIST_CONFIG_KEYS=(
 	STYLES INLINE_STYLES SCRIPTS DEFER_SCRIPTS INLINE_SCRIPTS
@@ -32,93 +32,6 @@ for CONFIG_KEY in "${CONFIG_KEYS[@]}"; do
 		CALLER_CONFIG_VALUE["${CONFIG_KEY}"]=${!CONFIG_KEY}
 	fi
 done
-
-# Values assigned here are exported dynamically for PHP templates.
-# shellcheck disable=SC2034
-set_config_defaults()
-{
-	BASE_URL=""
-	OUTPUT_DIR="./docs"
-	PAGES_DIR="./pages"
-	TEMPLATE_DIR="./templates"
-	STATIC_DIR="./static"
-	HELPERS_DIR="./helpers"
-	DEFAULT_THEME="theme-default"
-	PRODUCT_NAME=""
-	ORGANIZATION=""
-	TAGLINE=""
-	TITLE_PREFIX=""
-	HIGHLIGHT_STYLE="zenburn"
-	HEADER="templates/header.php"
-	FOOTER="templates/footer.php"
-	DEV_PORT="8000"
-	INHERIT_CORE_STATIC="0"
-	SEARCH_ENABLED="auto"
-	SEARCH_READER="/vendor/smgen-search/SearchReader.mjs"
-	ARCHIVE_TITLE="Archive"
-	PHP="php"
-	PANDOC="pandoc"
-	YQ="yq"
-	SMG_SEARCH="smgen-search"
-	ASPELL="aspell"
-	ASPELL_DICT="aspell.txt"
-	SMGEN_ENVIRONMENT=""
-	environment=""
-	STYLES=""
-	INLINE_STYLES=""
-	SCRIPTS=""
-	DEFER_SCRIPTS=""
-	INLINE_SCRIPTS=""
-	BODY_SCRIPTS=""
-	INLINE_BODY_SCRIPTS=""
-	CORE_ASSETS=""
-	NAVIGATION_WIDGETS="tree"
-	PLUGINS=""
-}
-
-yaml_has_key()
-{
-	local file=$1
-	local key=$2
-	local yaml_command=$3
-	[ "$("${yaml_command}" e "has(\"${key}\")" "${file}")" = "true" ]
-}
-
-load_yaml_config()
-{
-	local file=$1
-	local key value item value_type yaml_command
-
-	[ -f "${file}" ] || return 0
-	yaml_command=${YQ}
-
-	for key in "${SCALAR_CONFIG_KEYS[@]}"; do
-		if yaml_has_key "${file}" "${key}" "${yaml_command}"; then
-			value=$("${yaml_command}" e -r ".${key}" "${file}")
-			printf -v "${key}" '%s' "${value}"
-		fi
-	done
-
-	for key in "${LIST_CONFIG_KEYS[@]}"; do
-		if ! yaml_has_key "${file}" "${key}" "${yaml_command}"; then
-			continue
-		fi
-
-		value=""
-		value_type=$("${yaml_command}" e -r ".${key} | type" "${file}")
-		if [ "${value_type}" = "!!seq" ]; then
-			while IFS= read -r item; do
-				if [ -n "${value}" ]; then
-					value+=$'\n'
-				fi
-				value+="${item}"
-			done < <("${yaml_command}" e -r ".${key}[]" "${file}")
-		elif [ "${value_type}" != "!!null" ]; then
-			value=$("${yaml_command}" e -r ".${key}" "${file}")
-		fi
-		printf -v "${key}" '%s' "${value}"
-	done
-}
 
 list_has_value()
 {
@@ -154,34 +67,28 @@ configure_navigation_assets()
 
 load_config()
 {
-	set_config_defaults
-	if [ "${CALLER_CONFIG_SET[YQ]:-}" = "1" ]; then
-		YQ=${CALLER_CONFIG_VALUE[YQ]}
-	fi
-
-	if [ -f .smgen.yaml ]; then
-		if ! command -v "${YQ}" >/dev/null 2>&1; then
-			echo "yq is required to read .smgen.yaml." >&2
-			exit 1
-		fi
-		load_yaml_config .smgen.yaml
-	fi
-
-	local selected_environment
+	local selected_environment bootstrap_php records action name value
 	if [ "${CALLER_CONFIG_SET[SMGEN_ENVIRONMENT]:-}" = "1" ]; then
 		selected_environment=${CALLER_CONFIG_VALUE[SMGEN_ENVIRONMENT]}
 	elif [ "${CALLER_CONFIG_SET[environment]:-}" = "1" ]; then
 		selected_environment=${CALLER_CONFIG_VALUE[environment]}
 	else
-		selected_environment=${SMGEN_ENVIRONMENT:-${environment:-}}
+		selected_environment=""
 	fi
-	if [ -n "${selected_environment}" ]; then
-		if [[ ! ${selected_environment} =~ ^[A-Za-z0-9._-]+$ ]]; then
-			echo "Invalid SMGEN_ENVIRONMENT: ${selected_environment}" >&2
-			exit 1
-		fi
-		load_yaml_config ".smgen.${selected_environment}.yaml"
-	fi
+	bootstrap_php=${CALLER_CONFIG_VALUE[PHP]:-php}
+	require_command "${bootstrap_php}" "php"
+	records=$(mktemp "${TMPDIR:-/tmp}/smgen-config.XXXXXX")
+	trap 'rm -f -- "${records}"' RETURN
+	"${bootstrap_php}" "${SCRIPT_DIR}/bin/smgen.php" config-export "${selected_environment}" "${CALLER_CONFIG_VALUE[SMGEN_ENGINE]:-}" > "${records}"
+	while IFS= read -r -d '' action && IFS= read -r -d '' name && IFS= read -r -d '' value; do
+		case "${action}" in
+			set) printf -v "${name}" '%s' "${value}" ;;
+			unset) unset "${name}" ;;
+			*) echo "Invalid configuration record from PHP engine." >&2; exit 1 ;;
+		esac
+	done < "${records}"
+	rm -f -- "${records}"
+	trap - RETURN
 
 	if [ -f .smgen-rc ]; then
 		# shellcheck source=/dev/null
@@ -200,7 +107,11 @@ load_config()
 	done
 
 	for CONFIG_KEY in "${CONFIG_KEYS[@]}"; do
-		export "${CONFIG_KEY}=${!CONFIG_KEY}"
+		if declare -p "${CONFIG_KEY}" >/dev/null 2>&1; then
+			export "${CONFIG_KEY}=${!CONFIG_KEY}"
+		else
+			unset "${CONFIG_KEY}"
+		fi
 	done
 
 	SMGEN_ENVIRONMENT=${SMGEN_ENVIRONMENT:-${environment:-}}
@@ -448,7 +359,7 @@ prepare_navigation_assets()
 	fi
 }
 
-build_site()
+build_site_bash()
 {
 	local requested_path=${1:-}
 	local output_parent output_name backup_path="" page_file relative_path
@@ -646,6 +557,15 @@ build_site()
 	trap - RETURN EXIT
 }
 
+build_site()
+{
+	case "${SMGEN_ENGINE}" in
+		php) "${PHP}" "${SCRIPT_DIR}/bin/smgen.php" build "${1:-}" ;;
+		bash) build_site_bash "${1:-}" ;;
+		*) echo "SMGEN_ENGINE must be php or bash." >&2; return 1 ;;
+	esac
+}
+
 watch_site()
 {
 	local server_pid filepath event candidate
@@ -668,7 +588,12 @@ watch_site()
 		[ -e "${candidate}" ] || continue
 		watch_paths+=("$(canonical_existing_path "${candidate}")")
 	done
-	inotifywait -m -r -e close_write,create,delete,move --format '%w%f|%e' "${watch_paths[@]}" 2>/dev/null |
+	if [ "${SMGEN_ENGINE}" = "php" ]; then
+		while IFS= read -r -d '' candidate; do
+			watch_paths+=("${candidate}")
+		done < <("${PHP}" "${SCRIPT_DIR}/bin/smgen.php" watch-paths)
+	fi
+	inotifywait -m -r -e close_write,create,delete,move --exclude '(^|/)\.smgen-generated(/|$)' --format '%w%f|%e' "${watch_paths[@]}" 2>/dev/null |
 	while IFS='|' read -r filepath event; do
 		echo "Change detected: ${filepath} (${event})"
 		if ! "${BASH_SOURCE[0]}" build; then
@@ -685,7 +610,8 @@ case "${COMMAND}" in
 		echo "Usage: $(basename "$0") <command>"
 		echo
 		echo "Commands:"
-		echo "  init                Initialize a new site in current directory"
+		echo "  init [--reusable-templates]"
+		echo "                      Initialize a new site in current directory"
 		echo "  build [path]        Build the complete site atomically"
 		echo "  watch               Build, serve, and rebuild on filesystem changes"
 		echo "  serve               Serve the generated output locally"
@@ -702,14 +628,28 @@ case "${COMMAND}" in
 		fi
 		require_command curl
 		mkdir -p "${OUTPUT_DIR}" pages static templates
-		cp "${SCRIPT_DIR}/templates/page.php" "${SCRIPT_DIR}/templates/header.php" "${SCRIPT_DIR}/templates/footer.php" templates/
+		cp "${SCRIPT_DIR}/.smgen-rc-default" ./.smgen-rc
+		if [ "${2:-}" = "--reusable-templates" ]; then
+			cp "${SCRIPT_DIR}/templates/reusable/page.smgen.php" templates/page.smgen.php
+			cp "${SCRIPT_DIR}/templates/reusable/header.smgen.php" templates/header.smgen.php
+			cp "${SCRIPT_DIR}/templates/reusable/footer.smgen.php" templates/footer.smgen.php
+			cat >> ./.smgen-rc <<'EOF'
+
+HEADER=templates/header.smgen.php
+FOOTER=templates/footer.smgen.php
+EOF
+		elif [ -n "${2:-}" ]; then
+			echo "Unknown init option: ${2}" >&2
+			exit 1
+		else
+			cp "${SCRIPT_DIR}/templates/page.php" "${SCRIPT_DIR}/templates/header.php" "${SCRIPT_DIR}/templates/footer.php" templates/
+		fi
 		cp "${SCRIPT_DIR}/static/default.css" "${SCRIPT_DIR}/static/main.js" "${SCRIPT_DIR}/static/search.js" static/
 		cp "${SCRIPT_DIR}/static/search.svg" "${SCRIPT_DIR}/static/github.svg" "${SCRIPT_DIR}/static/logo.svg" static/
 		cp "${SCRIPT_DIR}/static/sun.svg" "${SCRIPT_DIR}/static/moon.svg" static/
 		cp "${SCRIPT_DIR}/static/icon-16.png" "${SCRIPT_DIR}/static/sitemap-badge.png" static/
 		mkdir -p static/vendor
 		cp -Rp "${SCRIPT_DIR}/static/vendor/smgen-search" static/vendor/
-		cp "${SCRIPT_DIR}/.smgen-rc-default" ./.smgen-rc
 		curl -fsSL "https://jaspervdj.be/lorem-markdownum/markdown.txt?p=5" -o ./pages/index.md
 		;;
 

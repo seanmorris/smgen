@@ -27,6 +27,15 @@ smgen init
 The command exits without changing the directory when any file already exists.
 It requires `curl` because it downloads the initial Markdown page.
 
+Pass `--reusable-templates` to initialize callable PHP template providers:
+
+```bash
+smgen init --reusable-templates
+```
+
+The default initializer continues to copy isolated `.php` templates for
+compatibility.
+
 The generated project contains:
 
 ```text
@@ -65,9 +74,14 @@ The optional path must resolve inside `PAGES_DIR`, but it does not limit the
 build. SMGen always refreshes every page, menu, RSS feed, sitemap entry, and
 search record.
 
+The PHP engine is the default. Set `SMGEN_ENGINE=bash` to run the compatibility
+builder during migration or output comparison.
+
 SMGen renders into a temporary directory beside `OUTPUT_DIR`. It replaces the
 previous output after every page succeeds. A render failure leaves the previous
 output in place. If `after-smgen.sh` fails, SMGen restores the previous output.
+The PHP engine rejects a second concurrent build for the same project before it
+runs project hooks or changes generated sources.
 
 The output directory cannot be a symbolic link, the project root, or a source
 directory. Page templates must resolve inside `TEMPLATE_DIR`, and selected core
@@ -82,8 +96,9 @@ smgen watch
 ```
 
 This command requires Linux `inotify-tools`. It watches the configured page,
-static, template, and helper directories along with project configuration and
-hook files. A failed rebuild leaves the last successful output available.
+static, template, and helper directories along with project configuration,
+hook files, plugin manifests, and plugin watch paths. A failed rebuild leaves
+the last successful output available.
 
 Set the development port in `.smgen-rc`, `.smgen.yaml`, or the calling
 environment:

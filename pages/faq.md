@@ -11,13 +11,15 @@ llms:
 ## Why does SMGen report that a command is required?
 
 Install the named executable and ensure it is on `PATH`. Every build requires
-Bash 4 or newer, PHP CLI with the YAML extension, mikefarah `yq` 4, and Pandoc.
-RSS feed generation also requires XMLWriter. The `watch`, `proofread`, and
-search features have additional optional tools.
+Bash 4 or newer, PHP 8.1 or newer with the YAML extension, and Pandoc. The Bash
+compatibility engine also requires mikefarah `yq` 4. RSS feed generation
+requires XMLWriter. The `watch`, `proofread`, and search features have
+additional optional tools.
 
 ## Why does `yq` report a parser or `jq` error?
 
-Several unrelated programs use the name `yq`. SMGen requires the Go executable
+Several unrelated programs use the name `yq`. The Bash compatibility engine
+requires the Go executable
 from [mikefarah/yq](https://github.com/mikefarah/yq), version 4. Confirm the
 installed program:
 

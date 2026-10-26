@@ -6,6 +6,7 @@ require_once(__DIR__ . '/getConf.php');
 function navigationOutputPath($pathname, $rootPath)
 {
 	$relative = substr($pathname, strlen($rootPath) + 1);
+	$relative = preg_replace('~^\.smgen-generated/[^/]+/~', '', str_replace(DIRECTORY_SEPARATOR, '/', $relative));
 	return '/' . preg_replace('/\.[^.]+$/', '.html', str_replace(DIRECTORY_SEPARATOR, '/', $relative));
 }
 
@@ -98,7 +99,7 @@ function navigationScanCatalog($path, $rootPath, $relativeDirectory, &$pages, &$
 	}
 	foreach($entries as $filename)
 	{
-		if($filename === '' || $filename[0] === '.')
+		if($filename === '' || ($filename[0] === '.' && !($relativeDirectory === '' && $filename === '.smgen-generated')))
 		{
 			continue;
 		}
@@ -111,6 +112,11 @@ function navigationScanCatalog($path, $rootPath, $relativeDirectory, &$pages, &$
 		$relative = ltrim($relativeDirectory . '/' . $filename, '/');
 		if($entry->isDir())
 		{
+			if($relative === '.smgen-generated')
+			{
+				navigationScanCatalog($pathname, $rootPath, $relative, $pages, $directories, false);
+				continue;
+			}
 			$metadata = parseDirectoryFrontmatter($pathname . DIRECTORY_SEPARATOR . '.fm.yaml');
 			$visible = $ancestorVisible && (bool) ($metadata['leftBarLink'] ?? true);
 			$directories[$relative] = [
@@ -786,280 +792,294 @@ function navigationLegacyWidgets()
 	return array_map('strval', getConf('NAVIGATION_WIDGETS') ?: ['tree']);
 }
 
-$rootPath = realpath($argv[1] ?? '');
-if($rootPath === false || !is_dir($rootPath))
+/**
+ * Compile pages, menus, regions, timeline assets, and plugin contributions.
+ */
+function compileNavigationData($rootArgument, $pluginPaths = null)
 {
-	fwrite(STDERR, "PAGES_DIR does not exist.\n");
-	exit(1);
-}
-
-$pages = [];
-$directories = [];
-navigationScanCatalog($rootPath, $rootPath, '', $pages, $directories);
-
-$definitions = [
-	'sidebar' => [
-		'name' => 'sidebar',
-		'label' => 'Navigation',
-		'renderer' => 'tree',
-		'hierarchy' => 'source',
-		'showLabel' => false,
-	],
-	'archive' => [
-		'name' => 'archive',
-		'label' => getConf('ARCHIVE_TITLE') ?: 'Archive',
-		'renderer' => 'timeline',
-		'hierarchy' => 'manual',
-		'showLabel' => true,
-	],
-];
-$contributions = [];
-$alters = [];
-$projectRoot = realpath(getenv('SMGEN_PROJECT_DIR') ?: getcwd()) ?: getcwd();
-
-foreach(getConf('PLUGINS') ?: [] as $pluginPath)
-{
-	$manifestPath = navigationResolvePluginPath((string) $pluginPath, $projectRoot, 'Plugin manifest');
-	$manifest = navigationReadYamlMapping($manifestPath, $manifestPath);
-	$pluginId = navigationToken($manifest['id'] ?? basename(dirname($manifestPath)), 'plugin id');
-	navigationMergeMenuDefinitions($definitions, $contributions, $manifest['menus'] ?? [], 'plugin ' . $pluginId);
-	if(isset($manifest['alter']))
+	$rootPath = realpath($rootArgument ?? '');
+	if($rootPath === false || !is_dir($rootPath))
 	{
-		$alterPath = navigationResolvePluginPath((string) $manifest['alter'], dirname($manifestPath), 'Plugin alter hook');
-		$alters[] = ['provider' => 'plugin ' . $pluginId, 'path' => $alterPath];
+		fwrite(STDERR, "PAGES_DIR does not exist.\n");
+		exit(1);
 	}
-}
-navigationMergeMenuDefinitions($definitions, $contributions, getConf('MENUS') ?: [], 'site configuration');
 
-$links = [];
-foreach(array_keys($definitions) as $name)
-{
-	$links[$name] = [];
-}
+	$pages = [];
+	$directories = [];
+	navigationScanCatalog($rootPath, $rootPath, '', $pages, $directories);
 
-foreach($pages as $page)
-{
-	if(array_key_exists('menus', $page['metadata']))
-	{
-		continue;
-	}
-	if($page['legacyVisible'] && ($page['metadata']['leftBarLink'] ?? true))
-	{
-		navigationPutPageLink($links, 'sidebar', $page, [
-			'weight' => 1000 + (float) ($page['metadata']['weight'] ?? 0),
-		], 'legacy sidebar');
-	}
-	if(array_key_exists('date', $page['metadata']) && ($page['metadata']['archive'] ?? true))
-	{
-		navigationPutPageLink($links, 'archive', $page, [], 'legacy archive');
-	}
-}
+	$definitions = [
+		'sidebar' => [
+			'name' => 'sidebar',
+			'label' => 'Navigation',
+			'renderer' => 'tree',
+			'hierarchy' => 'source',
+			'showLabel' => false,
+		],
+		'archive' => [
+			'name' => 'archive',
+			'label' => getConf('ARCHIVE_TITLE') ?: 'Archive',
+			'renderer' => 'timeline',
+			'hierarchy' => 'manual',
+			'showLabel' => true,
+		],
+	];
+	$contributions = [];
+	$alters = [];
+	$projectRoot = realpath(getenv('SMGEN_PROJECT_DIR') ?: getcwd()) ?: getcwd();
 
-foreach($contributions as $contribution)
-{
-	navigationApplyContribution($links, $contribution, $definitions, $pages);
-}
-
-foreach($pages as $source => $page)
-{
-	if(!array_key_exists('menus', $page['metadata']))
+	foreach($pluginPaths ?? (getConf('PLUGINS') ?: []) as $pluginPath)
 	{
-		continue;
-	}
-	foreach(navigationMemberships($page['metadata']['menus'], $source) as $menu => $settings)
-	{
-		$menu = navigationToken($menu, 'menu name');
-		if(!isset($definitions[$menu]))
+		$manifestPath = navigationResolvePluginPath((string) $pluginPath, $projectRoot, 'Plugin manifest');
+		$manifest = navigationReadYamlMapping($manifestPath, $manifestPath);
+		$pluginId = navigationToken($manifest['id'] ?? basename(dirname($manifestPath)), 'plugin id');
+		navigationMergeMenuDefinitions($definitions, $contributions, $manifest['menus'] ?? [], 'plugin ' . $pluginId);
+		if(isset($manifest['alter']))
 		{
-			throw new \RuntimeException('Unknown menu ' . $menu . ' in ' . $source);
+			$alterPath = navigationResolvePluginPath((string) $manifest['alter'], dirname($manifestPath), 'Plugin alter hook');
+			$alters[] = ['provider' => 'plugin ' . $pluginId, 'path' => $alterPath];
 		}
-		if($settings === false)
+	}
+	navigationMergeMenuDefinitions($definitions, $contributions, getConf('MENUS') ?: [], 'site configuration');
+
+	$links = [];
+	foreach(array_keys($definitions) as $name)
+	{
+		$links[$name] = [];
+	}
+
+	foreach($pages as $page)
+	{
+		if(array_key_exists('menus', $page['metadata']))
 		{
-			navigationRemovePageLinks($links, $menu, $source);
 			continue;
 		}
-		navigationPutPageLink($links, $menu, $page, $settings, $source);
-	}
-}
-
-foreach($directories as $source => $directory)
-{
-	if(!array_key_exists('menus', $directory['metadata']))
-	{
-		continue;
-	}
-	foreach(navigationMemberships($directory['metadata']['menus'], $source) as $menu => $settings)
-	{
-		$menu = navigationToken($menu, 'menu name');
-		if(!isset($definitions[$menu]))
+		if($page['legacyVisible'] && ($page['metadata']['leftBarLink'] ?? true))
 		{
-			throw new \RuntimeException('Unknown menu ' . $menu . ' in ' . $source);
+			navigationPutPageLink($links, 'sidebar', $page, [
+				'weight' => 1000 + (float) ($page['metadata']['weight'] ?? 0),
+			], 'legacy sidebar');
 		}
-		$id = $directory['id'];
-		if($settings === false)
+		if(array_key_exists('date', $page['metadata']) && ($page['metadata']['archive'] ?? true))
 		{
-			unset($links[$menu][$id]);
+			navigationPutPageLink($links, 'archive', $page, [], 'legacy archive');
+		}
+	}
+
+	foreach($contributions as $contribution)
+	{
+		navigationApplyContribution($links, $contribution, $definitions, $pages);
+	}
+
+	foreach($pages as $source => $page)
+	{
+		if(!array_key_exists('menus', $page['metadata']))
+		{
 			continue;
 		}
-		$parentDirectory = dirname($source);
-		$links[$menu][$id] = navigationApplyLinkSettings([
-			'id' => $id,
-			'type' => 'group',
-			'source' => $source,
-			'title' => $directory['title'],
-			'parent' => ($definitions[$menu]['hierarchy'] ?? 'manual') === 'source' && $parentDirectory !== '.'
-				? 'group:' . $parentDirectory
-				: null,
-			'weight' => (float) ($directory['metadata']['weight'] ?? 0),
-			'expanded' => (bool) ($directory['metadata']['open'] ?? true),
-			'variant' => 'default',
-		], $settings, $source);
-	}
-}
-
-$regionsConfig = getConf('MENU_REGIONS') ?: [];
-if($regionsConfig && (!is_array($regionsConfig) || navigationArrayIsList($regionsConfig)))
-{
-	throw new \RuntimeException('MENU_REGIONS must be a mapping.');
-}
-$regions = [];
-foreach($regionsConfig as $region => $menuNames)
-{
-	$region = navigationToken($region, 'menu region');
-	$regions[$region] = [];
-	foreach(navigationList($menuNames, 'menu region ' . $region) as $menuName)
-	{
-		$regions[$region][] = navigationToken($menuName, 'menu name');
-	}
-}
-if(!isset($regions['sidebar']))
-{
-	$regions['sidebar'] = [];
-	foreach(navigationLegacyWidgets() as $widget)
-	{
-		if($widget === 'tree')
+		foreach(navigationMemberships($page['metadata']['menus'], $source) as $menu => $settings)
 		{
-			$regions['sidebar'][] = 'sidebar';
+			$menu = navigationToken($menu, 'menu name');
+			if(!isset($definitions[$menu]))
+			{
+				throw new \RuntimeException('Unknown menu ' . $menu . ' in ' . $source);
+			}
+			if($settings === false)
+			{
+				navigationRemovePageLinks($links, $menu, $source);
+				continue;
+			}
+			navigationPutPageLink($links, $menu, $page, $settings, $source);
 		}
-		elseif($widget === 'archive')
+	}
+
+	foreach($directories as $source => $directory)
+	{
+		if(!array_key_exists('menus', $directory['metadata']))
 		{
-			$regions['sidebar'][] = 'archive';
+			continue;
+		}
+		foreach(navigationMemberships($directory['metadata']['menus'], $source) as $menu => $settings)
+		{
+			$menu = navigationToken($menu, 'menu name');
+			if(!isset($definitions[$menu]))
+			{
+				throw new \RuntimeException('Unknown menu ' . $menu . ' in ' . $source);
+			}
+			$id = $directory['id'];
+			if($settings === false)
+			{
+				unset($links[$menu][$id]);
+				continue;
+			}
+			$parentDirectory = dirname($source);
+			$links[$menu][$id] = navigationApplyLinkSettings([
+				'id' => $id,
+				'type' => 'group',
+				'source' => $source,
+				'title' => $directory['title'],
+				'parent' => ($definitions[$menu]['hierarchy'] ?? 'manual') === 'source' && $parentDirectory !== '.'
+					? 'group:' . $parentDirectory
+					: null,
+				'weight' => (float) ($directory['metadata']['weight'] ?? 0),
+				'expanded' => (bool) ($directory['metadata']['open'] ?? true),
+				'variant' => 'default',
+			], $settings, $source);
+		}
+	}
+
+	$regionsConfig = getConf('MENU_REGIONS') ?: [];
+	if($regionsConfig && (!is_array($regionsConfig) || navigationArrayIsList($regionsConfig)))
+	{
+		throw new \RuntimeException('MENU_REGIONS must be a mapping.');
+	}
+	$regions = [];
+	foreach($regionsConfig as $region => $menuNames)
+	{
+		$region = navigationToken($region, 'menu region');
+		$regions[$region] = [];
+		foreach(navigationList($menuNames, 'menu region ' . $region) as $menuName)
+		{
+			$regions[$region][] = navigationToken($menuName, 'menu name');
+		}
+	}
+	if(!isset($regions['sidebar']))
+	{
+		$regions['sidebar'] = [];
+		foreach(navigationLegacyWidgets() as $widget)
+		{
+			if($widget === 'tree')
+			{
+				$regions['sidebar'][] = 'sidebar';
+			}
+			elseif($widget === 'archive')
+			{
+				$regions['sidebar'][] = 'archive';
+			}
+			else
+			{
+				throw new \RuntimeException('Unknown navigation widget: ' . $widget);
+			}
+		}
+	}
+
+	$registry = ['menus' => &$definitions, 'links' => &$links, 'regions' => &$regions];
+	$catalogForAlter = ['pages' => $pages, 'directories' => $directories];
+	foreach($alters as $alter)
+	{
+		$callback = require($alter['path']);
+		if(!is_callable($callback))
+		{
+			throw new \RuntimeException('Menu alter hook must return a callable: ' . $alter['path']);
+		}
+		$callback($registry, $catalogForAlter, ['provider' => $alter['provider'], 'projectDir' => $projectRoot]);
+	}
+	$siteAlter = rtrim((string) getConf('HELPERS_DIR'), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'menu-alter.php';
+	if(is_file($siteAlter))
+	{
+		$callback = require($siteAlter);
+		if(!is_callable($callback))
+		{
+			throw new \RuntimeException('Site menu alter hook must return a callable: ' . $siteAlter);
+		}
+		$callback($registry, $catalogForAlter, ['provider' => 'site', 'projectDir' => $projectRoot]);
+	}
+	unset($registry);
+
+	$compiledMenus = [];
+	$pendingCreated = [];
+	foreach($definitions as $name => $definition)
+	{
+		$name = navigationToken($name, 'menu name');
+		$renderer = (string) ($definition['renderer'] ?? 'flat');
+		if(!in_array($renderer, ['flat', 'tree', 'timeline'], true))
+		{
+			throw new \RuntimeException('Unknown renderer for menu ' . $name . ': ' . $renderer);
+		}
+		$hierarchy = (string) ($definition['hierarchy'] ?? 'manual');
+		if(!in_array($hierarchy, ['manual', 'source'], true))
+		{
+			throw new \RuntimeException('Unknown hierarchy for menu ' . $name . ': ' . $hierarchy);
+		}
+		if($hierarchy === 'source')
+		{
+			navigationAddSourceHierarchy($links[$name], $name, $directories);
+		}
+
+		$menu = [
+			'name' => $name,
+			'label' => (string) ($definition['label'] ?? $name),
+			'renderer' => $renderer,
+			'showLabel' => (bool) ($definition['showLabel'] ?? false),
+		];
+		if($renderer === 'timeline')
+		{
+			$timelinePages = [];
+			foreach($links[$name] ?? [] as $link)
+			{
+				if(($link['type'] ?? null) !== 'page' || !isset($pages[$link['source']]))
+				{
+					throw new \RuntimeException('Timeline menu ' . $name . ' may contain only content pages.');
+				}
+				$date = navigationResolveTimelineDate($pages[$link['source']], $pendingCreated);
+				$timelinePages[] = [
+					'id' => $link['id'],
+					'title' => (string) $link['title'],
+					'path' => $link['path'],
+					'date' => $date['date'],
+					'timestamp' => $date['timestamp'],
+				];
+			}
+			$menu['timeline'] = buildArchiveNavigation($timelinePages);
 		}
 		else
 		{
-			throw new \RuntimeException('Unknown navigation widget: ' . $widget);
+			$menu['items'] = navigationBuildLinkTree($name, $links[$name] ?? []);
 		}
-	}
-}
-
-$registry = ['menus' => &$definitions, 'links' => &$links, 'regions' => &$regions];
-$catalogForAlter = ['pages' => $pages, 'directories' => $directories];
-foreach($alters as $alter)
-{
-	$callback = require($alter['path']);
-	if(!is_callable($callback))
-	{
-		throw new \RuntimeException('Menu alter hook must return a callable: ' . $alter['path']);
-	}
-	$callback($registry, $catalogForAlter, ['provider' => $alter['provider'], 'projectDir' => $projectRoot]);
-}
-$siteAlter = rtrim((string) getConf('HELPERS_DIR'), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'menu-alter.php';
-if(is_file($siteAlter))
-{
-	$callback = require($siteAlter);
-	if(!is_callable($callback))
-	{
-		throw new \RuntimeException('Site menu alter hook must return a callable: ' . $siteAlter);
-	}
-	$callback($registry, $catalogForAlter, ['provider' => 'site', 'projectDir' => $projectRoot]);
-}
-unset($registry);
-
-$compiledMenus = [];
-$pendingCreated = [];
-foreach($definitions as $name => $definition)
-{
-	$name = navigationToken($name, 'menu name');
-	$renderer = (string) ($definition['renderer'] ?? 'flat');
-	if(!in_array($renderer, ['flat', 'tree', 'timeline'], true))
-	{
-		throw new \RuntimeException('Unknown renderer for menu ' . $name . ': ' . $renderer);
-	}
-	$hierarchy = (string) ($definition['hierarchy'] ?? 'manual');
-	if(!in_array($hierarchy, ['manual', 'source'], true))
-	{
-		throw new \RuntimeException('Unknown hierarchy for menu ' . $name . ': ' . $hierarchy);
-	}
-	if($hierarchy === 'source')
-	{
-		navigationAddSourceHierarchy($links[$name], $name, $directories);
+		$compiledMenus[$name] = $menu;
 	}
 
-	$menu = [
-		'name' => $name,
-		'label' => (string) ($definition['label'] ?? $name),
-		'renderer' => $renderer,
-		'showLabel' => (bool) ($definition['showLabel'] ?? false),
-	];
-	if($renderer === 'timeline')
+	$activeMenus = [];
+	foreach($regions as $region => $menuNames)
 	{
-		$timelinePages = [];
-		foreach($links[$name] ?? [] as $link)
+		foreach($menuNames as $menuName)
 		{
-			if(($link['type'] ?? null) !== 'page' || !isset($pages[$link['source']]))
+			if(!isset($compiledMenus[$menuName]))
 			{
-				throw new \RuntimeException('Timeline menu ' . $name . ' may contain only content pages.');
+				throw new \RuntimeException('Unknown menu ' . $menuName . ' in region ' . $region);
 			}
-			$date = navigationResolveTimelineDate($pages[$link['source']], $pendingCreated);
-			$timelinePages[] = [
-				'id' => $link['id'],
-				'title' => (string) $link['title'],
-				'path' => $link['path'],
-				'date' => $date['date'],
-				'timestamp' => $date['timestamp'],
-			];
+			$activeMenus[$menuName] = true;
 		}
-		$menu['timeline'] = buildArchiveNavigation($timelinePages);
 	}
-	else
+	$assets = [];
+	foreach(array_keys($activeMenus) as $menuName)
 	{
-		$menu['items'] = navigationBuildLinkTree($name, $links[$name] ?? []);
-	}
-	$compiledMenus[$name] = $menu;
-}
-
-$activeMenus = [];
-foreach($regions as $region => $menuNames)
-{
-	foreach($menuNames as $menuName)
-	{
-		if(!isset($compiledMenus[$menuName]))
+		$menu = $compiledMenus[$menuName];
+		if($menu['renderer'] === 'timeline' && !empty($menu['timeline']['years']))
 		{
-			throw new \RuntimeException('Unknown menu ' . $menuName . ' in region ' . $region);
+			$assets[] = '/archive.css';
 		}
-		$activeMenus[$menuName] = true;
 	}
-}
-$assets = [];
-foreach(array_keys($activeMenus) as $menuName)
-{
-	$menu = $compiledMenus[$menuName];
-	if($menu['renderer'] === 'timeline' && !empty($menu['timeline']['years']))
+
+	foreach($pendingCreated as $path => $timestamp)
 	{
-		$assets[] = '/archive.css';
+		navigationWriteCreated($path, $timestamp);
 	}
+
+	return [
+		'version' => 2,
+		'menus' => $compiledMenus,
+		'regions' => $regions,
+		'assets' => array_values(array_unique($assets)),
+		'tree' => $compiledMenus['sidebar']['items'] ?? [],
+		'archive' => $compiledMenus['archive']['timeline'] ?? ['years' => []],
+	];
 }
 
-foreach($pendingCreated as $path => $timestamp)
+if(realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === __FILE__)
 {
-	navigationWriteCreated($path, $timestamp);
+	echo json_encode(
+		compileNavigationData($argv[1] ?? '', null),
+		JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR
+	);
 }
-
-echo json_encode([
-	'version' => 2,
-	'menus' => $compiledMenus,
-	'regions' => $regions,
-	'assets' => array_values(array_unique($assets)),
-	'tree' => $compiledMenus['sidebar']['items'] ?? [],
-	'archive' => $compiledMenus['archive']['timeline'] ?? ['years' => []],
-], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);

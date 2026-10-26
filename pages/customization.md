@@ -145,9 +145,11 @@ The template path must resolve inside `TEMPLATE_DIR`. SMGen selects a page
 template in this order:
 
 1. the page's `template` field
-2. `templates/<source-extension>-page.php`
-3. `templates/<source-extension>-template.html`
-4. `templates/page.php`
+2. `templates/<source-extension>-page.smgen.php`
+3. `templates/<source-extension>-page.php`
+4. `templates/<source-extension>-template.html`
+5. `templates/page.smgen.php`
+6. `templates/page.php`
 
 For a Markdown source, the extension-specific names are `md-page.php` and
 `md-template.html`.
@@ -155,6 +157,54 @@ For a Markdown source, the extension-specific names are `md-page.php` and
 Keep the `renderJsonLd` call when a custom template should emit the page's
 `jsonld` frontmatter.
 <!-- </how> -->
+
+## Reuse a Template Process
+
+SMGen runs existing `.php` page templates in a separate PHP process for each
+page. This preserves templates that declare functions or classes and prevents
+one page from changing another page's PHP state.
+
+A filename ending in `.smgen.php` opts into the reusable renderer. The file
+loads once per build and returns a callable:
+
+```php
+<?php
+
+use Smgen\Template\PageContext;
+
+return static function(PageContext $page): void {
+  ?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>$if(pagetitle)$${pagetitle}$else$${title}$endif$</title>
+</head>
+<body data-page="<?=$page->escape($page->currentPage())?>">
+  <article>$body$</article>
+</body>
+</html>
+  <?php
+};
+```
+
+`PageContext` provides `config()`, `frontmatter()`, `metadata()`, source and
+destination paths, `assetUrl()`, `escape()`, JSON-LD output, menu rendering,
+and RSS and `llms.txt` discovery. Use `renderFragment()` for reusable header
+and footer providers inside `TEMPLATE_DIR`.
+
+The callable receives a new context for each page. Do not keep page data in
+static variables or mutate shared globals. A provider may emit its template or
+return it as a string, but it cannot do both.
+
+Initialize a site with reusable default providers when starting a new template:
+
+```bash
+smgen init --reusable-templates
+```
+
+Existing projects can keep `.php` templates. The PHP build engine supports both
+modes in the same site.
 
 ## Change Header and Footer Includes
 
@@ -166,7 +216,8 @@ header: templates/product-header.php
 footer: templates/product-footer.php
 ```
 
-Both paths must resolve inside `TEMPLATE_DIR`.
+Both paths must resolve inside `TEMPLATE_DIR`. A reusable page provider must
+render `.smgen.php` header and footer providers.
 
 ## Override Helpers
 

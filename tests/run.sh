@@ -181,6 +181,45 @@ EOF
 	assert_file_missing "${site}/public/archive.css"
 }
 
+test_php_engine_has_descriptive_docblocks()
+{
+	begin_test "phpdoc"
+	php "${ROOT_DIR}/tests/phpdoc.php" > "${DEBUG_DIR}/${CURRENT_TEST}.log" 2>&1
+}
+
+test_init_can_select_reusable_templates()
+{
+	begin_test "init-reusable-project"
+	local site fake_bin
+	site="$(mktemp -d "${TEMP_ROOT}/site.XXXXXX")"
+	CURRENT_SITE="${site}"
+	fake_bin="${TEMP_ROOT}/fake-bin-reusable"
+	mkdir -p "${fake_bin}"
+	cat > "${fake_bin}/curl" <<'EOF'
+#!/usr/bin/env bash
+while [ "$#" -gt 0 ]; do
+	if [ "$1" = "-o" ]; then
+		printf '%s\n' '---' 'title: Reusable Home' '---' '' '# Reusable Home' > "$2"
+		exit 0
+	fi
+	shift
+done
+exit 1
+EOF
+	chmod +x "${fake_bin}/curl"
+
+	(
+		cd "${site}"
+		PATH="${fake_bin}:${PATH}" "${SMGEN}" init --reusable-templates > "${DEBUG_DIR}/${CURRENT_TEST}-init.log" 2>&1
+		"${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-build.log" 2>&1
+	)
+
+	assert_file_exists "${site}/templates/page.smgen.php"
+	assert_file_exists "${site}/templates/header.smgen.php"
+	assert_file_exists "${site}/templates/footer.smgen.php"
+	assert_file_contains "${site}/docs/index.html" 'Reusable Home'
+}
+
 test_default_build_generates_expected_output()
 {
 	begin_test "default-build"
@@ -495,6 +534,18 @@ EOF
 	assert_file_contains "${site}/public/index.html" '<script src="https://example.test/docs/blocking.js"></script>'
 	assert_file_contains "${site}/public/index.html" '<script defer src="https://example.test/docs/main.js"></script>'
 	assert_file_contains "${site}/public/index.html" 'href="https://example.test/docs/default.css"'
+
+	cat > "${site}/.smgen.yaml" <<'EOF'
+SEARCH_ENABLED: 0
+STYLES:
+  unexpected: /default.css
+EOF
+	(
+		cd "${site}"
+		assert_command_fails "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-mapping.log" 2>&1
+	)
+	assert_file_contains "${DEBUG_DIR}/${CURRENT_TEST}-mapping.log" 'STYLES must be a list.'
+	assert_file_contains "${site}/public/index.html" 'Caller product'
 }
 
 test_frontmatter_controls_templates_navigation_and_toc()
@@ -1744,6 +1795,314 @@ test_logo_preserves_its_aspect_ratio()
 	assert_file_contains "${ROOT_DIR}/static/default.css" $'a.logo img.logo-image {\n\twidth: 6rem;\n\theight: auto;'
 }
 
+test_php_engine_preserves_legacy_output_and_template_isolation()
+{
+	begin_test "php-engine-compatibility"
+	local site
+	site="$(make_temp_site)"
+	CURRENT_SITE="${site}"
+
+	(
+		cd "${site}"
+		SMGEN_ENGINE=bash "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-bash.log" 2>&1
+		cp docs/index.html expected-index.html
+		cp docs/sitemap.xml expected-sitemap.xml
+		SMGEN_ENGINE=php "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-php.log" 2>&1
+	)
+
+	assert_files_equal "${site}/expected-index.html" "${site}/docs/index.html"
+	assert_files_equal "${site}/expected-sitemap.xml" "${site}/docs/sitemap.xml"
+
+	cat > "${site}/templates/page.php" <<'PHP'
+<?php
+/** Provides a declaration that would collide if legacy templates shared a process. */
+class LegacyTemplateDeclaration {}
+?><!DOCTYPE html>
+<html><body data-page="<?=htmlspecialchars(getenv('CURRENT_PAGE'), ENT_QUOTES)?>">$body$</body></html>
+PHP
+	printf '%s\n' '# Second' > "${site}/pages/second.md"
+	(
+		cd "${site}"
+		SMGEN_ENGINE=php "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-isolated.log" 2>&1
+	)
+	assert_file_contains "${site}/docs/index.html" 'data-page="/index.html"'
+	assert_file_contains "${site}/docs/second.html" 'data-page="/second.html"'
+}
+
+test_reusable_template_provider_loads_once()
+{
+	begin_test "reusable-template"
+	local site
+	site="$(make_temp_site)"
+	CURRENT_SITE="${site}"
+	printf '%s\n' '# Second' > "${site}/pages/second.md"
+	cat > "${site}/templates/page.smgen.php" <<'PHP'
+<?php
+use Smgen\Template\PageContext;
+file_put_contents(__DIR__ . '/../provider-loads.log', "loaded\n", FILE_APPEND);
+/** Render one fixture page while proving that the provider file loads once. */
+return static function(PageContext $page): void {
+	?><!DOCTYPE html><html><body data-page="<?=$page->escape($page->currentPage())?>">$body$</body></html><?php
+};
+PHP
+
+	(
+		cd "${site}"
+		SMGEN_ENGINE=php "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}.log" 2>&1
+	)
+
+	[ "$(wc -l < "${site}/provider-loads.log")" -eq 1 ] || fail "expected reusable provider to load once"
+	assert_file_contains "${site}/docs/index.html" 'data-page="/index.html"'
+	assert_file_contains "${site}/docs/second.html" 'data-page="/second.html"'
+}
+
+test_versioned_plugin_contributions_and_hooks()
+{
+	begin_test "versioned-plugin"
+	local site plugin
+	site="$(make_temp_site)"
+	CURRENT_SITE="${site}"
+	plugin="${site}/node_modules/fixture-plugin"
+	mkdir -p "${plugin}/static" "${plugin}/filters"
+	printf '%s\n' '# Opt in' > "${site}/pages/opt-in.md"
+	cat > "${site}/pages/opt-in.md" <<'EOF'
+---
+title: Opt in
+plugins:
+  fixture: true
+---
+
+# Opt in
+EOF
+	printf '%s\n' '# Plain' > "${site}/pages/plain.md"
+	mkdir -p "${site}/pages/inherited"
+	cat > "${site}/pages/inherited/.fm.yaml" <<'EOF'
+plugins:
+  fixture: true
+EOF
+	printf '%s\n' '# Inherited' > "${site}/pages/inherited/enabled.md"
+	cat > "${site}/pages/inherited/disabled.md" <<'EOF'
+---
+plugins:
+  fixture: false
+---
+
+# Disabled
+EOF
+	cat > "${site}/package.json" <<'EOF'
+{"private":true}
+EOF
+	cat > "${plugin}/package.json" <<'EOF'
+{"name":"fixture-plugin","version":"1.0.0","smgen":{"plugin":"smgen.plugin.yaml"}}
+EOF
+	cat > "${plugin}/smgen.plugin.yaml" <<'EOF'
+apiVersion: smgen/v1
+id: fixture
+pages:
+  selectors:
+    - include: [never.md]
+  styles: [/plugin.css]
+  scripts:
+    body: [/plugin.js]
+  filters: [filters/mark.lua]
+assets:
+  - from: static/plugin.css
+    to: plugin.css
+  - from: static/plugin.js
+    to: plugin.js
+hooks:
+  prepare:
+    run: [bash, ./hook.sh, prepare]
+  finalize:
+    run: [bash, ./hook.sh, finalize]
+watch: [static]
+EOF
+	printf '%s\n' 'body { color: red; }' > "${plugin}/static/plugin.css"
+	printf '%s\n' 'window.fixture = true;' > "${plugin}/static/plugin.js"
+	cat > "${plugin}/filters/mark.lua" <<'EOF'
+function Header(element)
+	element.attributes['data-plugin-filter'] = 'yes'
+	return element
+end
+EOF
+	cat > "${plugin}/hook.sh" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+if [ "$1" = prepare ]; then
+	directory=$(php -r '$c=json_decode(file_get_contents($argv[1]), true); echo $c["paths"]["generatedPages"];' "${SMGEN_PLUGIN_CONTEXT}")
+	printf '%s\n' '---' 'title: Generated' 'menus: {sidebar: false}' '---' '' '# Generated' > "${directory}/generated.md"
+else
+	stage=$(php -r '$c=json_decode(file_get_contents($argv[1]), true); echo $c["paths"]["stage"];' "${SMGEN_PLUGIN_CONTEXT}")
+	label=$(php -r '$c=json_decode(file_get_contents($argv[1]), true); echo $c["plugin"]["options"]["label"];' "${SMGEN_PLUGIN_CONTEXT}")
+	printf '%s\n' "${label}" > "${stage}/plugin-finalized.txt"
+fi
+EOF
+	chmod +x "${plugin}/hook.sh"
+	cat > "${site}/.smgen.yaml" <<'EOF'
+SEARCH_ENABLED: 0
+PLUGINS:
+  - use: fixture-plugin
+    options:
+      label: ready
+    pages:
+      include: [index.md]
+EOF
+
+	(
+		cd "${site}"
+		SMGEN_ENGINE=php "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}.log" 2>&1
+		"${ROOT_DIR}/bin/smgen.php" watch-paths | tr '\0' '\n' > watch-paths.txt
+	)
+
+	assert_file_exists "${site}/docs/generated.html"
+	assert_file_contains "${site}/docs/sitemap.xml" '/generated.html'
+	assert_file_exists "${site}/docs/plugin.css"
+	assert_file_exists "${site}/docs/plugin.js"
+	assert_file_contains "${site}/docs/index.html" '/plugin.css'
+	assert_file_contains "${site}/docs/index.html" '/plugin.js'
+	assert_file_contains "${site}/docs/index.html" 'data-plugin-filter="yes"'
+	assert_file_contains "${site}/docs/opt-in.html" '/plugin.css'
+	assert_file_excludes "${site}/docs/plain.html" '/plugin.css'
+	assert_file_contains "${site}/docs/inherited/enabled.html" '/plugin.css'
+	assert_file_excludes "${site}/docs/inherited/disabled.html" '/plugin.css'
+	assert_file_contains "${site}/docs/plugin-finalized.txt" 'ready'
+	assert_file_contains "${site}/watch-paths.txt" "${plugin}/static"
+	assert_file_missing "${site}/pages/.smgen-generated"
+	(
+		cd "${site}"
+		SMGEN_ENGINE=bash "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-bash-fallback.log" 2>&1
+	)
+	assert_file_exists "${site}/docs/index.html"
+}
+
+test_plugin_finalize_failure_preserves_output()
+{
+	begin_test "plugin-finalize-rollback"
+	local site
+	site="$(make_temp_site)"
+	CURRENT_SITE="${site}"
+	(
+		cd "${site}"
+		SMGEN_ENGINE=php "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-first.log" 2>&1
+	)
+	assert_file_contains "${site}/docs/index.html" 'Hello'
+	printf '%s\n' '# Replacement' > "${site}/pages/index.md"
+	mkdir -p "${site}/plugin"
+	cat > "${site}/plugin/smgen.plugin.yaml" <<'EOF'
+apiVersion: smgen/v1
+id: failing
+hooks:
+  finalize:
+    run: [bash, -c, 'exit 7']
+EOF
+	cat > "${site}/.smgen.yaml" <<'EOF'
+SEARCH_ENABLED: 0
+PLUGINS: [./plugin/smgen.plugin.yaml]
+EOF
+	(
+		cd "${site}"
+		assert_command_fails env SMGEN_ENGINE=php "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-failed.log" 2>&1
+	)
+	assert_file_contains "${site}/docs/index.html" 'Hello'
+	assert_file_excludes "${site}/docs/index.html" 'Replacement'
+}
+
+test_plugin_asset_symlinks_preserve_output()
+{
+	begin_test "plugin-asset-symlink"
+	local site
+	site="$(make_temp_site)"
+	CURRENT_SITE="${site}"
+	(
+		cd "${site}"
+		SMGEN_ENGINE=php "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-first.log" 2>&1
+	)
+	mkdir -p "${site}/plugin/static"
+	printf '%s\n' 'outside plugin root' > "${site}/outside.txt"
+	ln -s "${site}/outside.txt" "${site}/plugin/static/leak.txt"
+	cat > "${site}/plugin/smgen.plugin.yaml" <<'EOF'
+apiVersion: smgen/v1
+id: linked-assets
+assets:
+  - from: static
+    to: linked-assets
+EOF
+	cat > "${site}/.smgen.yaml" <<'EOF'
+SEARCH_ENABLED: 0
+PLUGINS: [./plugin/smgen.plugin.yaml]
+EOF
+	printf '%s\n' '# Replacement' > "${site}/pages/index.md"
+	(
+		cd "${site}"
+		assert_command_fails env SMGEN_ENGINE=php "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-failed.log" 2>&1
+	)
+	assert_file_contains "${DEBUG_DIR}/${CURRENT_TEST}-failed.log" 'contains a symbolic link'
+	assert_file_contains "${site}/docs/index.html" 'Hello'
+	assert_file_excludes "${site}/docs/index.html" 'Replacement'
+}
+
+test_concurrent_php_build_is_rejected()
+{
+	begin_test "concurrent-build-lock"
+	local site
+	site="$(make_temp_site)"
+	CURRENT_SITE="${site}"
+	cat > "${site}/before-smgen.sh" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+touch .first-build-started
+while [ ! -f .release-first-build ]; do
+	sleep 0.01
+done
+EOF
+	chmod +x "${site}/before-smgen.sh"
+	(
+		cd "${site}"
+		SMGEN_ENGINE=php "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-first.log" 2>&1 &
+		first_pid=$!
+		trap 'touch .release-first-build; wait "${first_pid}" 2>/dev/null || true' EXIT
+		for _ in {1..200}; do
+			[ ! -f .first-build-started ] || break
+			sleep 0.01
+		done
+		[ -f .first-build-started ] || fail "first build did not reach its hook"
+		assert_command_fails env SMGEN_ENGINE=php "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-second.log" 2>&1
+		touch .release-first-build
+		wait "${first_pid}"
+		trap - EXIT
+	)
+	assert_file_contains "${DEBUG_DIR}/${CURRENT_TEST}-second.log" 'Another SMGen build is already running for'
+	assert_file_contains "${site}/docs/index.html" 'Hello'
+}
+
+test_stale_generated_pages_are_cleaned_safely()
+{
+	begin_test "stale-generated-pages"
+	local site
+	site="$(make_temp_site)"
+	CURRENT_SITE="${site}"
+	mkdir -p "${site}/pages/.smgen-generated/old-plugin"
+	printf '%s\n' 'smgen/v1' > "${site}/pages/.smgen-generated/.smgen-managed"
+	printf '%s\n' '# Stale' > "${site}/pages/.smgen-generated/old-plugin/stale.md"
+	(
+		cd "${site}"
+		SMGEN_ENGINE=php "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-managed.log" 2>&1
+	)
+	assert_file_missing "${site}/pages/.smgen-generated"
+	assert_file_missing "${site}/docs/stale.html"
+
+	mkdir -p "${site}/pages/.smgen-generated/unknown"
+	printf '%s\n' '# Unmanaged' > "${site}/pages/.smgen-generated/unknown/page.md"
+	printf '%s\n' '# Replacement' > "${site}/pages/index.md"
+	(
+		cd "${site}"
+		assert_command_fails env SMGEN_ENGINE=php "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-unmanaged.log" 2>&1
+	)
+	assert_file_contains "${DEBUG_DIR}/${CURRENT_TEST}-unmanaged.log" 'Refusing to replace an unmanaged generated pages directory'
+	assert_file_contains "${site}/docs/index.html" 'Hello'
+	assert_file_excludes "${site}/docs/index.html" 'Replacement'
+}
+
 test_npm_package_installs_a_buildable_cli()
 {
 	begin_test "npm-package"
@@ -1779,6 +2138,8 @@ NODE
 	assert_file_exists "${consumer}/node_modules/smgen/helpers/jsonld.php"
 	assert_file_exists "${consumer}/node_modules/smgen/helpers/llms.php"
 	assert_file_exists "${consumer}/node_modules/smgen/templates/page.php"
+	assert_file_exists "${consumer}/node_modules/smgen/templates/reusable/page.smgen.php"
+	assert_file_exists "${consumer}/node_modules/smgen/bin/smgen.php"
 	assert_file_exists "${consumer}/node_modules/smgen/static/default.css"
 	assert_file_exists "${consumer}/node_modules/smgen/.smgen-rc-default"
 	"${consumer}/node_modules/.bin/smgen" help > "${DEBUG_DIR}/${CURRENT_TEST}-help.log"
@@ -1810,7 +2171,9 @@ EOF
 
 main()
 {
+	test_php_engine_has_descriptive_docblocks
 	test_init_creates_a_buildable_project
+	test_init_can_select_reusable_templates
 	test_default_build_generates_expected_output
 	test_custom_output_dir_builds_and_links_sitemap
 	test_env_base_url_overrides_same_origin_defaults
@@ -1844,6 +2207,13 @@ main()
 	test_external_links_use_noopener
 	test_primary_mousedown_starts_navigation
 	test_logo_preserves_its_aspect_ratio
+	test_php_engine_preserves_legacy_output_and_template_isolation
+	test_reusable_template_provider_loads_once
+	test_versioned_plugin_contributions_and_hooks
+	test_plugin_finalize_failure_preserves_output
+	test_plugin_asset_symlinks_preserve_output
+	test_concurrent_php_build_is_rejected
+	test_stale_generated_pages_are_cleaned_safely
 	test_npm_package_installs_a_buildable_cli
 
 	echo "PASS: all tests"

@@ -219,6 +219,11 @@ no stylesheet request.
 
 ## Menu Plugins
 
+This section covers menu contributions. A manifest can contain only the fields
+shown here for compatibility, or add `apiVersion: smgen/v1` when it also uses
+build plugin features. See [Build Plugins](plugins.html) for package discovery,
+page assets, filters, and lifecycle hooks.
+
 <!-- <how keywords="bulk page selection, public guides, include exclude where, plugin selectors"> -->
 List plugin manifests in the order they should run:
 
@@ -250,8 +255,8 @@ menus:
 alter: menu-alter.php
 ```
 
-Manifest paths resolve from the project root. An `alter` path resolves from the
-manifest's directory.
+Manifest paths resolve from the project root. Installed npm package names are
+also accepted. An `alter` path resolves from the manifest's directory.
 
 A selector supports:
 

@@ -1,8 +1,8 @@
 # SMGen
 
-SMGen is a Bash-based static site generator. It renders Markdown with Pandoc,
-wraps each page in PHP templates, copies static assets, and writes a complete
-HTML site.
+SMGen is a static site generator with a PHP build engine and a Bash command-line
+entrypoint. It renders Markdown with Pandoc, wraps each page in PHP templates,
+copies static assets, and writes a complete HTML site.
 
 <a target="_blank" href="https://seanmorris.github.io/smgen/">
 <img width="100%" src="https://seanmorris.github.io/smgen/banner-cropped.jpg" alt="SMGen" />
@@ -13,8 +13,10 @@ SMGen supports:
 - YAML frontmatter for pages and directories
 - JSON-LD structured data from page frontmatter
 - PHP and Pandoc templates
+- reusable PHP template providers and isolated legacy templates
 - named menus with flat, tree, and timeline renderers
-- ordered menu plugins and alter hooks
+- versioned plugins with page selection, assets, filters, and build hooks
+- ordered menu contributions and alter hooks
 - named RSS 2.0 feeds with YAML channel and item data
 - curated `llms.txt` indexes from page and directory frontmatter
 - sitemap generation
@@ -27,15 +29,16 @@ SMGen supports:
 Every build requires:
 
 - Bash 4 or newer
-- PHP CLI with the YAML extension
-- [mikefarah/yq](https://github.com/mikefarah/yq) 4
+- PHP 8.1 or newer with the YAML extension
 - Pandoc
 
 The npm installation method requires Node.js 20 or newer.
 
 `smgen init`, `smgen create-random-page`, and the installer also require
 `curl`. RSS feed generation requires the PHP XMLWriter extension. Optional
-commands use `inotify-tools`, `aspell`, and `smgen-search`.
+commands use `inotify-tools`, `aspell`, and `smgen-search`. The Bash
+compatibility engine requires [mikefarah/yq](https://github.com/mikefarah/yq)
+4.
 
 On Debian or Ubuntu:
 
@@ -64,7 +67,7 @@ npx smgen build
 ```
 
 npm installs the SMGen command, templates, helpers, and static assets. Install
-PHP, Pandoc, `yq`, and any optional shell tools through the operating system.
+PHP, Pandoc, and any optional shell tools through the operating system.
 
 The shell installer remains available for machines that do not use npm:
 
@@ -114,7 +117,8 @@ from built-in defaults through YAML, environment-specific YAML, `.smgen-rc`,
 ## Commands
 
 ```text
-smgen init                Initialize an empty project directory
+smgen init [--reusable-templates]
+                          Initialize an empty project directory
 smgen build [path]        Rebuild the complete site
 smgen watch               Build, serve, and watch on Linux
 smgen serve               Serve the generated output
@@ -138,6 +142,7 @@ The hosted documentation is the canonical reference:
 - [CLI Reference](https://seanmorris.github.io/smgen/cli.html)
 - [Configuration](https://seanmorris.github.io/smgen/configuration.html)
 - [Navigation and Plugins](https://seanmorris.github.io/smgen/navigation.html)
+- [Build Plugins](https://seanmorris.github.io/smgen/plugins.html)
 - [RSS Feeds](https://seanmorris.github.io/smgen/rss.html)
 - [llms.txt](https://seanmorris.github.io/smgen/llms.html)
 - [Customization](https://seanmorris.github.io/smgen/customization.html)

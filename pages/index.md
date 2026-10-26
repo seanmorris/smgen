@@ -13,7 +13,7 @@ jsonld:
       "@id": "https://seanmorris.github.io/smgen/#website"
       url: https://seanmorris.github.io/smgen/
       name: SMGen
-      description: Build static sites from Markdown with Pandoc, PHP templates, and Bash.
+      description: Build static sites from Markdown with Pandoc, PHP templates, and versioned plugins.
       inLanguage: en
       author:
         "@id": "https://seanmorris.github.io/smgen/#author"
@@ -21,7 +21,7 @@ jsonld:
       "@id": "https://seanmorris.github.io/smgen/#webpage"
       url: https://seanmorris.github.io/smgen/
       name: Getting Started
-      description: Build static sites from Markdown with Pandoc, PHP templates, and Bash.
+      description: Build static sites from Markdown with Pandoc, PHP templates, and versioned plugins.
       inLanguage: en
       isPartOf:
         "@id": "https://seanmorris.github.io/smgen/#website"
@@ -35,7 +35,7 @@ jsonld:
       "@id": "https://seanmorris.github.io/smgen/#software"
       url: https://seanmorris.github.io/smgen/
       name: SMGen
-      description: Build static sites from Markdown with Pandoc, PHP templates, and Bash.
+      description: Build static sites from Markdown with Pandoc, PHP templates, and versioned plugins.
       codeRepository: https://github.com/seanmorris/smgen
       license: https://www.apache.org/licenses/LICENSE-2.0
       programmingLanguage:
@@ -54,8 +54,9 @@ jsonld:
 SMGen turns Markdown into portable static HTML files. You can serve the output
 with GitHub Pages or any other static host, and the deployed site does not need
 PHP or an application server. Pandoc renders the content, PHP templates provide
-the page structure, and Bash coordinates configuration, assets, navigation,
-RSS feeds, search, and sitemap generation.
+the page structure, and the PHP build engine coordinates configuration, assets,
+navigation, plugins, RSS feeds, search, and sitemap generation. A thin Bash
+entrypoint retains the command-line, watch, serve, and compatibility commands.
 <!-- </what> -->
 
 ## Requirements
@@ -63,15 +64,16 @@ RSS feeds, search, and sitemap generation.
 A build requires:
 
 - Bash 4 or newer
-- PHP CLI with the YAML extension
-- `yq` 4 from [mikefarah/yq](https://github.com/mikefarah/yq)
+- PHP 8.1 or newer with the YAML extension
 - Pandoc
 
 The npm installation method requires Node.js 20 or newer.
 
-The installer and `smgen init` also require `curl`. RSS feed generation
-requires the PHP XMLWriter extension. Install `inotify-tools` for the watch
-command, `aspell` for proofreading, and `smgen-search` to build a search index.
+The Bash compatibility engine requires `yq` 4 from
+[mikefarah/yq](https://github.com/mikefarah/yq). The installer and `smgen init`
+also require `curl`. RSS feed generation requires the PHP XMLWriter extension.
+Install `inotify-tools` for the watch command, `aspell` for proofreading, and
+`smgen-search` to build a search index.
 
 On Debian or Ubuntu:
 
@@ -101,8 +103,9 @@ npm install --save-dev smgen
 npx smgen build
 ```
 
-npm installs the command and its runtime files. Install PHP, Pandoc, `yq`, and
-optional shell tools through the operating system.
+npm installs the command and its runtime files. Install PHP, Pandoc, and
+optional shell tools through the operating system. Install `yq` when a project
+uses the Bash compatibility engine.
 
 The shell installer remains available for machines that do not use npm:
 
@@ -167,6 +170,7 @@ smgen watch
 - [CLI Reference](cli.html): every command and its requirements
 - [Configuration](configuration.html): precedence, defaults, assets, paths, and search
 - [Navigation and Plugins](navigation.html): menus, regions, timelines, and plugins
+- [Build Plugins](plugins.html): selected assets, generated pages, filters, and build hooks
 - [RSS Feeds](rss.html): named feeds, page membership, dates, and output
 - [llms.txt](llms.html): a curated machine-readable index of generated pages
 - [Customization](customization.html): templates, themes, and injected assets

@@ -7,10 +7,16 @@ llms:
 
 # Install on macOS
 
-Install Bash, Pandoc, and `yq` with Homebrew. macOS already provides `curl`:
+Install Bash and Pandoc with Homebrew. macOS already provides `curl`:
 
 ```bash
-brew install bash pandoc yq
+brew install bash pandoc
+```
+
+Add `yq` when a project uses the Bash compatibility engine:
+
+```bash
+brew install yq
 ```
 
 SMGen uses Bash 4 features. A system-wide `smgen` installation invokes the

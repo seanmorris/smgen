@@ -9,7 +9,6 @@ SMGen can build a local full-text index with [smgen-search](https://www.npmjs.co
 ## Prerequisites
 
 - [Node.js](https://nodejs.org/) 20 or newer
-- [yq](https://github.com/mikefarah/yq)
 - [smgen-search CLI](https://www.npmjs.com/package/smgen-search)
 
 ## 1. Install `smgen-search`
