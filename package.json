@@ -70,6 +70,6 @@
     "access": "public"
   },
   "devDependencies": {
-    "smgen-assistant": "https://github.com/seanmorris/smgen-assistant/releases/download/v0.1.27/smgen-assistant-0.1.27.tgz"
+    "smgen-assistant": "git+https://github.com/seanmorris/smgen-assistant.git#5bc116820b07746c2610b17d81a0de367fbd8619"
   }
 }
