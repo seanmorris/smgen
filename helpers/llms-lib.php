@@ -492,7 +492,7 @@ function generateLlmsFile($baseUrl, $buildDir, $manifestPath, $pagesRoot)
 	}
 
 	$outputPath = rtrim($buildDir, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'llms.txt';
-	if(file_exists($outputPath))
+	if(file_exists($outputPath) || is_link($outputPath))
 	{
 		throw new \RuntimeException('llms.txt collides with an existing output file.');
 	}

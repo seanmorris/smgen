@@ -1013,7 +1013,7 @@ EOF
 test_llms_validation_preserves_previous_output()
 {
 	begin_test "llms-validation"
-	local site
+	local site escaped_target
 	site="$(make_temp_site)"
 	CURRENT_SITE="${site}"
 	(
@@ -1061,6 +1061,17 @@ EOF
 		assert_command_fails "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-collision.log" 2>&1
 	)
 	assert_file_contains "${DEBUG_DIR}/${CURRENT_TEST}-collision.log" 'llms.txt collides with an existing output file'
+	assert_file_contains "${site}/docs/index.html" '<h1 id="hello">Hello</h1>'
+
+	rm "${site}/static/llms.txt"
+	escaped_target="${site}/escaped-llms.txt"
+	ln -s "${escaped_target}" "${site}/static/llms.txt"
+	(
+		cd "${site}"
+		assert_command_fails "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-symlink.log" 2>&1
+	)
+	assert_file_contains "${DEBUG_DIR}/${CURRENT_TEST}-symlink.log" 'llms.txt collides with an existing output file'
+	assert_file_missing "${escaped_target}"
 	assert_file_contains "${site}/docs/index.html" '<h1 id="hello">Hello</h1>'
 
 	rm "${site}/static/llms.txt"
