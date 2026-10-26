@@ -1490,9 +1490,27 @@ test_logo_preserves_its_aspect_ratio()
 test_npm_package_installs_a_buildable_cli()
 {
 	begin_test "npm-package"
-	local package_dir archive_name archive consumer site fake_bin
+	local package_dir package_source archive_name archive consumer site fake_bin
 	package_dir="$(mktemp -d "${TEMP_ROOT}/package.XXXXXX")"
-	archive_name="$(cd "${ROOT_DIR}" && npm_config_dry_run=false npm pack --ignore-scripts --pack-destination "${package_dir}" --silent)"
+	package_source="$(mktemp -d "${TEMP_ROOT}/package-source.XXXXXX")"
+	node - "${ROOT_DIR}" "${package_source}" <<'NODE'
+const fs = require('node:fs');
+const path = require('node:path');
+
+const [source, destination] = process.argv.slice(2);
+const metadata = JSON.parse(fs.readFileSync(path.join(source, 'package.json'), 'utf8'));
+for (const entry of ['README.md', 'LICENSE', ...metadata.files]) {
+	if (path.isAbsolute(entry) || entry.split(/[\\/]/).includes('..')) {
+		throw new Error(`Unsafe package entry: ${entry}`);
+	}
+	const target = path.join(destination, entry);
+	fs.mkdirSync(path.dirname(target), {recursive: true});
+	fs.cpSync(path.join(source, entry), target, {recursive: true});
+}
+delete metadata.scripts.prepack;
+fs.writeFileSync(path.join(destination, 'package.json'), `${JSON.stringify(metadata, null, 2)}\n`);
+NODE
+	archive_name="$(cd "${package_source}" && npm_config_dry_run=false npm pack --ignore-scripts --pack-destination "${package_dir}" --silent)"
 	archive="${package_dir}/${archive_name}"
 	consumer="$(mktemp -d "${TEMP_ROOT}/consumer.XXXXXX")"
 	printf '%s\n' '{"private":true}' > "${consumer}/package.json"
