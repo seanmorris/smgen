@@ -2040,7 +2040,12 @@ output=$3
 test -f "${input}/index.md"
 test -f "${input}/generated.md"
 test ! -e "${input}/.smgen-generated"
-find "${input}" -type f -printf '%P\n' | sort > search-input.txt
+input_prefix="${input%/}/"
+find "${input}" -type f -print |
+	while IFS= read -r path; do
+		printf '%s\n' "${path#"${input_prefix}"}"
+	done |
+	LC_ALL=C sort > search-input.txt
 printf 'SRCH' > "${output}"
 EOF
 	chmod +x "${site}/search-indexer.sh"
