@@ -79,6 +79,29 @@ final class PageCatalog
 		return $this->frontmatterCache[$path] ??= \parsePageFrontmatter($path);
 	}
 
+	/** Merge inherited directory metadata with one page's own frontmatter. */
+	public function effectiveMetadata(PageRecord $page): array
+	{
+		$metadata = [];
+		$directory = dirname($page->relative);
+		$parts = $directory === '.' ? [] : explode('/', $directory);
+		$current = $this->pagesRoot;
+		$metadataPaths = [$current . DIRECTORY_SEPARATOR . '.fm.yaml'];
+		foreach($parts as $part)
+		{
+			$current .= DIRECTORY_SEPARATOR . $part;
+			$metadataPaths[] = $current . DIRECTORY_SEPARATOR . '.fm.yaml';
+		}
+		foreach($metadataPaths as $metadataPath)
+		{
+			$metadata = array_replace(
+				$metadata,
+				$this->directoryCache[$metadataPath] ??= \parseDirectoryFrontmatter($metadataPath),
+			);
+		}
+		return array_replace($metadata, $page->frontmatter);
+	}
+
 	/** Merge inherited directory plugin flags with page-level overrides. */
 	private function pluginFlags(string $relative, array $frontmatter): array
 	{

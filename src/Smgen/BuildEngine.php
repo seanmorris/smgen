@@ -123,9 +123,10 @@ final class BuildEngine
 			{
 				fwrite(STDOUT, "\033[33;4mAssembling search index...\033[0m\n");
 				Filesystem::assertNoSymlinkSegments($buildDir, 'search.bin', 'Search index output');
+				$searchPages = $this->prepareSearchPages($catalog, $pages, $workDir);
 				$this->mustRun([
 					(string) $this->config->get('SMG_SEARCH'), 'build-index',
-					(string) $this->config->get('PAGES_DIR'), $buildDir . '/search.bin',
+					$searchPages, $buildDir . '/search.bin',
 				], $pluginEnvironment);
 			}
 			elseif($searchEnabled && !is_file($buildDir . '/search.bin'))
@@ -447,6 +448,74 @@ final class BuildEngine
 		{
 			throw new \RuntimeException('Search reader not found in static output: ' . $reader);
 		}
+	}
+
+	/**
+	 * Materialize searchable Markdown at its public route so generated plugin pages
+	 * enter the same index as authored pages without exposing the private staging path.
+	 */
+	private function prepareSearchPages(PageCatalog $catalog, array $pages, string $workDir): string
+	{
+		$root = Filesystem::assertNoSymlinkSegments($workDir, 'search-pages', 'Search source directory');
+		if(!mkdir($root, 0700) && !is_dir($root))
+		{
+			throw new \RuntimeException('Unable to create search source directory: ' . $root);
+		}
+		foreach($pages as $page)
+		{
+			if(!$page instanceof PageRecord || strtolower($page->extension) !== 'md') continue;
+			$relative = preg_replace('/\.html$/', '.md', $page->destination);
+			if(!is_string($relative) || $relative === $page->destination)
+			{
+				throw new \RuntimeException('Unable to derive a search path for page: ' . $page->source);
+			}
+			$target = Filesystem::assertNoSymlinkSegments($root, $relative, 'Search source page');
+			if(!is_dir(dirname($target)) && !mkdir(dirname($target), 0700, true) && !is_dir(dirname($target)))
+			{
+				throw new \RuntimeException('Unable to create search source directory: ' . dirname($target));
+			}
+			$metadata = $catalog->effectiveMetadata($page);
+			$searchMetadata = [];
+			foreach(['title', 'noSearch'] as $name)
+			{
+				if(array_key_exists($name, $metadata)) $searchMetadata[$name] = $metadata[$name];
+			}
+			$source = file_get_contents($page->source);
+			if($source === false)
+			{
+				throw new \RuntimeException('Unable to read search source page: ' . $page->source);
+			}
+			$body = $this->markdownBody($source, $page->source);
+			$content = $this->searchFrontmatter($searchMetadata) . $body;
+			if(file_put_contents($target, $content) === false)
+			{
+				throw new \RuntimeException('Unable to write search source page: ' . $target);
+			}
+		}
+		return $root;
+	}
+
+	/** Return a Markdown page body after removing its validated YAML frontmatter. */
+	private function markdownBody(string $source, string $path): string
+	{
+		$source = str_replace(["\r\n", "\r"], "\n", $source);
+		if(!str_starts_with($source, "---\n")) return $source;
+		$end = strpos($source, "\n---\n", 4);
+		if($end !== false) return substr($source, $end + 5);
+		if(str_ends_with($source, "\n---")) return '';
+		throw new \RuntimeException('Unterminated YAML frontmatter: ' . $path);
+	}
+
+	/** Encode the metadata consumed by smgen-search as page frontmatter. */
+	private function searchFrontmatter(array $metadata): string
+	{
+		if($metadata === []) return '';
+		$yaml = yaml_emit($metadata, YAML_UTF8_ENCODING, YAML_LN_BREAK);
+		if(!is_string($yaml)) throw new \RuntimeException('Unable to encode search page metadata.');
+		$yaml = preg_replace('/\A---[ \t]*\n/', '', $yaml);
+		$yaml = is_string($yaml) ? preg_replace('/\n\.\.\.[ \t]*\n?\z/', "\n", $yaml) : null;
+		if(!is_string($yaml)) throw new \RuntimeException('Unable to normalize search page metadata.');
+		return "---\n" . $yaml . "---\n\n";
 	}
 
 	/** Render one source through its PHP template and a dedicated Pandoc process. */

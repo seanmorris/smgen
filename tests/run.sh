@@ -2032,8 +2032,19 @@ else
 fi
 EOF
 	chmod +x "${plugin}/hook.sh"
+	cat > "${site}/search-indexer.sh" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+input=$2
+output=$3
+test -f "${input}/index.md"
+test -f "${input}/generated.md"
+test ! -e "${input}/.smgen-generated"
+find "${input}" -type f -printf '%P\n' | sort > search-input.txt
+printf 'SRCH' > "${output}"
+EOF
+	chmod +x "${site}/search-indexer.sh"
 	cat > "${site}/.smgen.yaml" <<'EOF'
-SEARCH_ENABLED: 0
 PLUGINS:
   - use: fixture-plugin
     options:
@@ -2044,11 +2055,15 @@ EOF
 
 	(
 		cd "${site}"
-		SMGEN_ENGINE=php "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}.log" 2>&1
+		SEARCH_ENABLED=1 SMG_SEARCH=./search-indexer.sh SMGEN_ENGINE=php \
+			"${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}.log" 2>&1
 		"${ROOT_DIR}/bin/smgen.php" watch-paths | tr '\0' '\n' > watch-paths.txt
 	)
 
 	assert_file_exists "${site}/docs/generated.html"
+	assert_file_exists "${site}/docs/search.bin"
+	assert_file_contains "${site}/search-input.txt" 'generated.md'
+	assert_file_excludes "${site}/search-input.txt" '.smgen-generated'
 	assert_file_contains "${site}/docs/sitemap.xml" '/generated.html'
 	assert_file_exists "${site}/docs/plugin.css"
 	assert_file_exists "${site}/docs/plugin.js"
