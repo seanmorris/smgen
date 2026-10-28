@@ -212,7 +212,7 @@ return static function(PageContext $page): void {
 
 `PageContext` provides `config()`, `frontmatter()`, `metadata()`, source and
 destination paths, `assetUrl()`, `escape()`, JSON-LD output, menu rendering,
-and RSS and `llms.txt` discovery. Use `renderFragment()` for reusable header
+breadcrumb trails, and RSS and `llms.txt` discovery. Use `renderFragment()` for reusable header
 and footer providers inside `TEMPLATE_DIR`.
 
 The callable receives a new context for each page. Do not keep page data in

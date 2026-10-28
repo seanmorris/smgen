@@ -169,6 +169,23 @@ final class PageContext
 		return $this->capture(static fn() => \renderMenuRegion($name, $options));
 	}
 
+	/**
+	 * Return the breadcrumb trail for this page: frontmatter ancestors or the menu chain.
+	 *
+	 * @param array<string, mixed> $options navigationTrail() options.
+	 * @return list<array{title: string, href: ?string, current: bool}> Crumbs, oldest first.
+	 */
+	public function breadcrumbs(array $options = []): array
+	{
+		return \navigationTrail($options + ['frontmatter' => $this->page->frontmatter]);
+	}
+
+	/** Capture the breadcrumb navigation markup; empty for a page with no ancestors. */
+	public function renderBreadcrumbs(array $options = []): string
+	{
+		return $this->capture(fn() => \renderBreadcrumbs($options + ['frontmatter' => $this->page->frontmatter]));
+	}
+
 	/** Capture the compatibility sidebar navigation markup. */
 	public function renderNavBar(): string
 	{

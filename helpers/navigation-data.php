@@ -548,6 +548,36 @@ function navigationAddSourceHierarchy(&$menuLinks, $menuName, $directories)
 	}
 }
 
+/**
+ * Give every directory group the public path of its index page, when one exists.
+ *
+ * Breadcrumb trails link a group through this path without turning the group's
+ * tree summary into a link.
+ *
+ * @param array<string, array<string, mixed>>|null $menuLinks Links of one menu, keyed by id.
+ * @param array<string, array<string, mixed>> $pages Catalog pages keyed by source path.
+ */
+function navigationAttachGroupIndexes(&$menuLinks, $pages)
+{
+	if(!is_array($menuLinks))
+	{
+		return;
+	}
+	foreach($menuLinks as &$link)
+	{
+		if(($link['type'] ?? null) !== 'group' || !isset($link['source']) || isset($link['index']))
+		{
+			continue;
+		}
+		$index = $pages[$link['source'] . '/index.md'] ?? null;
+		if($index !== null)
+		{
+			$link['index'] = $index['path'];
+		}
+	}
+	unset($link);
+}
+
 function navigationSortLinks(&$items)
 {
 	usort($items, function($a, $b) {
@@ -661,7 +691,7 @@ function navigationLegacyWidgets()
 }
 
 /**
- * Compile pages, menus, regions, timeline assets, and plugin contributions.
+ * Compile pages, menus, regions, renderer assets, and plugin contributions.
  */
 function compileNavigationData($rootArgument, $pluginPaths = null)
 {
@@ -875,6 +905,7 @@ function compileNavigationData($rootArgument, $pluginPaths = null)
 		{
 			navigationAddSourceHierarchy($links[$name], $name, $directories);
 		}
+		navigationAttachGroupIndexes($links[$name], $pages);
 
 		$menu = [
 			'name' => $name,

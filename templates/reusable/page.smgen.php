@@ -86,6 +86,7 @@ $endif$
 			<?php endif; ?>
 			<div class = "page-content">
 				<article $if(itemtype)$ itemscope itemtype = "https://${itemtype}" $endif$>
+				<?=$page->renderBreadcrumbs()?>
 				$for(microdata/pairs)$
 				<meta itemprop = "${microdata.key}" content = "${microdata.value}" />
 				$endfor$

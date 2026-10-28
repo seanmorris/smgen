@@ -1675,6 +1675,63 @@ EOF
 	assert_file_contains "${site}/docs/sitemap.xml" '<lastmod>2024-05-06</lastmod>'
 }
 
+test_breadcrumbs_follow_menus_and_frontmatter()
+{
+	begin_test "breadcrumbs"
+	local site
+	site="$(make_temp_site)"
+	CURRENT_SITE="${site}"
+	rm "${site}/.smgen-rc"
+	mkdir -p "${site}/pages/guides/advanced"
+
+	cat > "${site}/.smgen.yaml" <<'EOF'
+BASE_URL: https://example.test
+SEARCH_ENABLED: 0
+STYLES:
+  - /default.css
+EOF
+	printf '%s\n' '---' 'title: Home' '---' '# Home' > "${site}/pages/index.md"
+	printf '%s\n' '---' 'title: Guides' '---' '# Guides' > "${site}/pages/guides/index.md"
+	printf '%s\n' '---' 'title: Intro' '---' '# Intro' > "${site}/pages/guides/intro.md"
+	printf '%s\n' '---' 'title: Deep' '---' '# Deep' > "${site}/pages/guides/advanced/deep.md"
+	cat > "${site}/pages/declared.md" <<'EOF'
+---
+title: Declared
+breadcrumbs:
+  - title: Library
+    path: /library/
+  - title: Shelf <b>
+---
+
+# Declared
+EOF
+	printf '%s\n' '---' 'title: Quiet' 'breadcrumbs: false' '---' '# Quiet' > "${site}/pages/guides/quiet.md"
+
+	(
+		cd "${site}"
+		"${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}.log" 2>&1
+	)
+
+	assert_file_contains "${site}/docs/guides/intro.html" '<nav class="breadcrumbs" aria-label="Breadcrumb"><ol><li><a href="https://example.test/guides/">Guides</a></li><li aria-current="page">Intro</li></ol></nav>'
+	assert_file_contains "${site}/docs/guides/advanced/deep.html" '<li><a href="https://example.test/guides/">Guides</a></li><li><span>Advanced</span></li><li aria-current="page">Deep</li>'
+	assert_file_excludes "${site}/docs/guides/index.html" 'class="breadcrumbs"'
+	assert_file_excludes "${site}/docs/index.html" 'class="breadcrumbs"'
+	assert_file_excludes "${site}/docs/guides/quiet.html" 'class="breadcrumbs"'
+	assert_file_contains "${site}/docs/declared.html" '<ol><li><a href="https://example.test/library/">Library</a></li><li><span>Shelf &lt;b&gt;</span></li><li aria-current="page">Declared</li></ol>'
+	assert_file_excludes "${site}/docs/guides/intro.html" '<summary><a href="https://example.test/guides/"'
+
+	cat > "${site}/templates/page.php" <<'PHP'
+<?php $trail = navigationTrail(['home' => 'Start']); ?><!DOCTYPE html>
+<html><body data-trail="<?=htmlspecialchars(implode(' > ', array_map(static fn($crumb) => $crumb['title'] . ($crumb['href'] === null ? '' : '=' . $crumb['href']), $trail)), ENT_QUOTES)?>">$body$</body></html>
+PHP
+	(
+		cd "${site}"
+		"${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-data.log" 2>&1
+	)
+	assert_file_contains "${site}/docs/guides/intro.html" 'data-trail="Start=https://example.test/ &gt; Guides=https://example.test/guides/ &gt; Intro=https://example.test/guides/intro.html"'
+	assert_file_contains "${site}/docs/index.html" 'data-trail="Home=https://example.test/"'
+}
+
 test_plugin_renderers_compile_render_and_report_missing_plugins()
 {
 	begin_test "plugin-renderers"
@@ -2283,6 +2340,7 @@ main()
 	test_named_rss_feeds_use_page_flags_and_dates
 	test_rss_validation_preserves_sources_and_output
 	test_named_menus_and_plugin_contributions
+	test_breadcrumbs_follow_menus_and_frontmatter
 	test_plugin_renderers_compile_render_and_report_missing_plugins
 	test_named_menu_validation_preserves_output
 	test_external_links_use_noopener

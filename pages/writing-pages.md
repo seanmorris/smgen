@@ -83,6 +83,8 @@ SMGen-specific page fields include:
 - `feeds`: named RSS feed memberships as a list or boolean mapping.
 - `rss`: custom RSS item elements for pages selected into a feed.
 - `menus`: named menu memberships and per-menu link settings.
+- `breadcrumbs`: the page's ancestors as a list of `title` and optional `path`
+  entries, replacing the trail derived from menus; `false` renders no trail.
 - `jsonld`: JSON-LD structured data emitted by the default template.
 - `llms`: membership and link metadata for the generated `llms.txt` index.
 

@@ -179,6 +179,52 @@ visibility.
 `renderMenu()` and `renderMenuRegion()` throw an exception for an unknown name.
 Check optional regions with `menuRegionExists()` before rendering them.
 
+## Breadcrumbs
+
+<!-- <how keywords="breadcrumbs, breadcrumb trail, ancestors, parent links, navigationTrail, renderBreadcrumbs"> -->
+Every page can render the trail of groups that lead to it:
+
+```php
+<?php renderBreadcrumbs(); ?>
+```
+
+`renderBreadcrumbs($options = [])` prints a `nav.breadcrumbs` element holding
+an ordered list. Each ancestor is a link when it has a target, the page itself
+closes the list with `aria-current="page"`, and nothing prints for a page with
+no ancestors. The default templates call it above the article, and
+`default.css` lays the list out in one line with slash separators.
+
+The trail comes from the first menu that contains the page. SMGen looks in the
+`sidebar` region unless the `region` or `menu` option names another place, and
+falls back to every menu when the region is undefined. Each enclosing group
+becomes a crumb. A group that stands for a source directory links to that
+directory's `index.md` when one exists; a group without an index page or a
+target is plain text. The directory index page itself does not repeat its
+group.
+
+A page can declare its ancestors instead. The `breadcrumbs` frontmatter list
+replaces the menu chain, so generated pages can describe a hierarchy that no
+menu holds, such as the namespaces an API reference plugin documents:
+
+```yaml
+breadcrumbs:
+  - title: Postbox API
+    path: /api/
+  - title: Postbox
+    path: /api/namespaces/postbox/
+```
+
+Each entry needs a `title`. An optional `path` is root-relative and resolved
+against `BASE_URL`; `href` is accepted as an alias. The page is appended as the
+current crumb. Set `breadcrumbs: false` to render no trail for one page.
+
+`navigationTrail($options = [])` returns the same trail as data, a list of
+`title`, `href`, and `current` entries oldest first, for templates that want
+their own markup. Pass `home` with a title to prepend a link to the site root.
+Reusable providers call `$page->breadcrumbs()` and `$page->renderBreadcrumbs()`,
+which pass the page's frontmatter automatically.
+<!-- </how> -->
+
 ## Plugin Renderers
 
 <!-- <how keywords="custom menu renderer, timeline plugin, renderer manifest field, renderer contract"> -->

@@ -193,6 +193,174 @@ function renderMenu($menuName, $options = [])
 	</div><?php
 }
 
+/**
+ * Normalise one breadcrumb entry from frontmatter or a navigation entry.
+ *
+ * @param mixed $entry Candidate with a title and an optional path or href.
+ * @param string $context Description used in error messages.
+ * @return array{title: string, href: ?string} Normalised crumb.
+ */
+function navigationTrailEntry($entry, $context)
+{
+	if(!is_array($entry) || !isset($entry['title']) || !is_scalar($entry['title']) || (string) $entry['title'] === '')
+	{
+		throw new \RuntimeException('Each ' . $context . ' entry needs a title.');
+	}
+	$target = $entry['path'] ?? $entry['href'] ?? null;
+	if($target !== null && (!is_scalar($target) || (string) $target === ''))
+	{
+		throw new \RuntimeException('A ' . $context . ' path must be a non-empty string: ' . $entry['title']);
+	}
+	return ['title' => (string) $entry['title'], 'href' => $target === null ? null : resolveAssetUrl((string) $target)];
+}
+
+/**
+ * Find the chain of navigation entries leading to the current page inside one tree.
+ *
+ * @param list<array<string, mixed>> $entries Compiled menu entries.
+ * @param string $currentPage Public path of the page being rendered.
+ * @return list<array<string, mixed>>|null Ancestors followed by the page entry, or null when absent.
+ */
+function navigationFindTrail($entries, $currentPage)
+{
+	foreach($entries as $entry)
+	{
+		if(navigationEntryHref($entry) === $currentPage)
+		{
+			return [$entry];
+		}
+		$chain = navigationFindTrail($entry['children'] ?? [], $currentPage);
+		if($chain !== null)
+		{
+			array_unshift($chain, $entry);
+			return $chain;
+		}
+	}
+	return null;
+}
+
+/**
+ * Build the breadcrumb trail for the current page.
+ *
+ * A `breadcrumbs` frontmatter list names the page's ancestors directly, each with a
+ * `title` and an optional root-relative `path`. Otherwise the trail follows the
+ * first menu that contains the page: every enclosing group becomes a crumb, linked
+ * to the group's directory index page when one exists, and the page closes the
+ * trail. Options: `frontmatter` (the page's parsed frontmatter; the template global
+ * is used when omitted), `menu` (one menu name), `region` (menus of one region;
+ * default `sidebar`, falling back to every menu), and `home` (a title that prepends
+ * a link to the site root).
+ *
+ * @param array<string, mixed> $options Trail options.
+ * @return list<array{title: string, href: ?string, current: bool}> Crumbs, oldest first; empty when the page is in no menu.
+ */
+function navigationTrail($options = [])
+{
+	$frontmatter = $options['frontmatter'] ?? ($GLOBALS['frontmatter'] ?? []);
+	$frontmatter = is_array($frontmatter) ? $frontmatter : [];
+	$currentPage = (string) (getenv('CURRENT_PAGE') ?: '');
+	$trail = [];
+
+	if(array_key_exists('breadcrumbs', $frontmatter))
+	{
+		$declared = $frontmatter['breadcrumbs'];
+		if($declared === false || $declared === null)
+		{
+			return [];
+		}
+		if(!is_array($declared) || ($declared !== [] && array_keys($declared) !== range(0, count($declared) - 1)))
+		{
+			throw new \RuntimeException('breadcrumbs frontmatter must be a list of entries with a title and an optional path.');
+		}
+		foreach($declared as $entry)
+		{
+			$trail[] = navigationTrailEntry($entry, 'breadcrumbs') + ['current' => false];
+		}
+		$title = $frontmatter['pagetitle'] ?? $frontmatter['title'] ?? null;
+		$trail[] = ['title' => is_scalar($title) ? (string) $title : $currentPage, 'href' => $currentPage !== '' ? resolveAssetUrl($currentPage) : null, 'current' => true];
+	}
+	else
+	{
+		$data = loadNavigationData();
+		if(isset($options['menu']))
+		{
+			$menuNames = [(string) $options['menu']];
+		}
+		else
+		{
+			$region = (string) ($options['region'] ?? 'sidebar');
+			$menuNames = $data['regions'][$region] ?? array_keys($data['menus'] ?? []);
+		}
+		$chain = null;
+		foreach($menuNames as $menuName)
+		{
+			if(!isset($data['menus'][$menuName]))
+			{
+				throw new \RuntimeException('Unknown menu: ' . $menuName);
+			}
+			$chain = navigationFindTrail($data['menus'][$menuName]['items'] ?? [], $currentPage);
+			if($chain !== null)
+			{
+				break;
+			}
+		}
+		if($chain === null)
+		{
+			return [];
+		}
+		$page = array_pop($chain);
+		foreach($chain as $entry)
+		{
+			$href = $entry['index'] ?? navigationEntryHref($entry);
+			if($href === $currentPage)
+			{
+				continue;
+			}
+			$trail[] = ['title' => (string) ($entry['title'] ?? ''), 'href' => $href === null ? null : resolveAssetUrl($href), 'current' => false];
+		}
+		$trail[] = ['title' => (string) ($page['title'] ?? ''), 'href' => resolveAssetUrl($currentPage), 'current' => true];
+	}
+
+	if(isset($options['home']) && (string) $options['home'] !== '' && ($trail[0]['href'] ?? null) !== resolveAssetUrl('/'))
+	{
+		array_unshift($trail, ['title' => (string) $options['home'], 'href' => resolveAssetUrl('/'), 'current' => false]);
+	}
+	return $trail;
+}
+
+/**
+ * Render the breadcrumb trail as a nav element with an ordered list.
+ *
+ * Nothing renders for a page with no ancestors. Accepts the navigationTrail() options.
+ *
+ * @param array<string, mixed> $options Trail options.
+ */
+function renderBreadcrumbs($options = [])
+{
+	$trail = navigationTrail($options);
+	if(count($trail) < 2)
+	{
+		return;
+	}
+	?><nav class="breadcrumbs" aria-label="Breadcrumb"><ol><?php
+	foreach($trail as $crumb)
+	{
+		if($crumb['current'])
+		{
+			?><li aria-current="page"><?=escapeHtml($crumb['title']);?></li><?php
+		}
+		elseif($crumb['href'] !== null)
+		{
+			?><li><a href="<?=escapeHtml($crumb['href']);?>"><?=escapeHtml($crumb['title']);?></a></li><?php
+		}
+		else
+		{
+			?><li><span><?=escapeHtml($crumb['title']);?></span></li><?php
+		}
+	}
+	?></ol></nav><?php
+}
+
 function menuRegionExists($regionName)
 {
 	$data = loadNavigationData();

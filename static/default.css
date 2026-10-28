@@ -203,6 +203,31 @@ nav.main {
 	white-space: nowrap;
 }
 
+section.below-fold nav.breadcrumbs {
+	position: static;
+	max-width: none;
+	min-width: 0;
+	max-height: none;
+	overflow: visible;
+}
+
+nav.breadcrumbs ol {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.35em;
+	list-style: none;
+	margin: 0 0 1rem;
+	padding: 0;
+	font-size: 0.875rem;
+	opacity: 0.85;
+}
+
+nav.breadcrumbs li + li::before {
+	content: "/";
+	margin-right: 0.35em;
+	opacity: 0.6;
+}
+
 section.below-fold nav {
 	font-size: 0.875rem;
 	line-height: 1.2rem;

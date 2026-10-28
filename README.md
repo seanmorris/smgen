@@ -15,6 +15,7 @@ SMGen supports:
 - PHP and Pandoc templates
 - reusable PHP template providers and isolated legacy templates
 - named menus with flat and tree renderers, plus renderers that plugins register
+- breadcrumb trails derived from menus or declared in frontmatter
 - versioned plugins with page selection, assets, filters, and build hooks
 - ordered menu contributions and alter hooks
 - named RSS 2.0 feeds with YAML channel and item data
