@@ -827,6 +827,80 @@ test_page_argument_still_rebuilds_the_complete_site()
 	assert_file_missing "${site}/docs/pages/index.html"
 }
 
+test_build_jobs_match_serial_output()
+{
+	begin_test "build-jobs-match-serial"
+	local site engine
+	site="$(make_temp_site)"
+	CURRENT_SITE="${site}"
+	mkdir -p "${site}/pages/guide"
+	printf '%s\n' '---' 'title: Code' '---' '' '# Code' '' '```php' '<?php echo "hi";' '```' > "${site}/pages/code.md"
+	printf '%s\n' '---' 'title: Plain' 'toc: false' '---' '' '# Plain' '' 'No table of contents here.' > "${site}/pages/plain.md"
+	printf '%s\n' '---' 'title: Guide' '---' '' '# Guide' '' '## Section' '' 'Text.' > "${site}/pages/guide/index.md"
+	printf '%s\n' '---' 'title: Deep' '---' '' '# Deep' '' '```yaml' 'key: value' '```' > "${site}/pages/guide/deep.md"
+	for engine in php bash; do
+		(
+			cd "${site}"
+			SMGEN_ENGINE="${engine}" BUILD_JOBS=1 OUTPUT_DIR="./out-${engine}-serial" "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-${engine}-serial.log" 2>&1
+			SMGEN_ENGINE="${engine}" BUILD_JOBS=4 OUTPUT_DIR="./out-${engine}-parallel" "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-${engine}-parallel.log" 2>&1
+		)
+		assert_file_contains "${DEBUG_DIR}/${CURRENT_TEST}-${engine}-serial.log" 'Converting 5 page(s) with 1 Pandoc job(s)'
+		assert_file_contains "${DEBUG_DIR}/${CURRENT_TEST}-${engine}-parallel.log" 'Converting 5 page(s) with 4 Pandoc job(s)'
+		assert_file_contains "${site}/out-${engine}-parallel/code.html" 'class="sourceCode php"'
+		assert_file_contains "${site}/out-${engine}-parallel/guide/deep.html" 'class="sourceCode yaml"'
+		assert_file_contains "${site}/out-${engine}-parallel/sitemap.xml" 'guide/'
+		diff -r "${site}/out-${engine}-serial" "${site}/out-${engine}-parallel" \
+			|| fail "expected ${engine} engine output to match between BUILD_JOBS=1 and BUILD_JOBS=4"
+	done
+	diff -r "${site}/out-php-parallel/sitemap.xml" "${site}/out-bash-parallel/sitemap.xml" \
+		|| fail "expected both engines to write the same sitemap"
+}
+
+test_build_jobs_failure_names_pages_and_preserves_output()
+{
+	begin_test "build-jobs-failure"
+	local site engine
+	site="$(make_temp_site)"
+	CURRENT_SITE="${site}"
+	(
+		cd "${site}"
+		"${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-first.log" 2>&1
+	)
+	assert_file_contains "${site}/docs/index.html" '<h1 id="hello">Hello</h1>'
+
+	mkdir -p "${site}/helpers"
+	cat > "${site}/helpers/domain.lua" <<'EOF'
+local input = PANDOC_STATE.input_files[1] or ""
+if input:match("broken%.md$") then
+	error("simulated filter failure for " .. input)
+end
+EOF
+	printf '%s\n' '---' 'title: Broken' '---' '' '# Broken' > "${site}/pages/broken.md"
+	printf '%s\n' '---' 'title: Fine' '---' '' '# Fine' > "${site}/pages/fine.md"
+	for engine in php bash; do
+		(
+			cd "${site}"
+			assert_command_fails env SMGEN_ENGINE="${engine}" BUILD_JOBS=2 "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-${engine}.log" 2>&1
+		)
+		grep -Eq 'Pandoc failed for .*broken\.md' "${DEBUG_DIR}/${CURRENT_TEST}-${engine}.log" \
+			|| fail "expected the ${engine} engine to name broken.md as the failed page"
+		if grep -E 'Pandoc failed for' "${DEBUG_DIR}/${CURRENT_TEST}-${engine}.log" | grep -q 'fine.md'; then
+			fail "expected the ${engine} engine not to blame fine.md"
+		fi
+		assert_file_contains "${DEBUG_DIR}/${CURRENT_TEST}-${engine}.log" 'simulated filter failure'
+		assert_file_contains "${site}/docs/index.html" '<h1 id="hello">Hello</h1>'
+		assert_file_missing "${site}/docs/fine.html"
+	done
+	(
+		cd "${site}"
+		assert_command_fails env BUILD_JOBS=0 "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-php-jobs.log" 2>&1
+		assert_command_fails env SMGEN_ENGINE=bash BUILD_JOBS=two "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-bash-jobs.log" 2>&1
+	)
+	assert_file_contains "${DEBUG_DIR}/${CURRENT_TEST}-php-jobs.log" 'BUILD_JOBS must be "auto" or a positive integer: 0'
+	assert_file_contains "${DEBUG_DIR}/${CURRENT_TEST}-bash-jobs.log" 'BUILD_JOBS must be "auto" or a positive integer: two'
+	assert_file_contains "${site}/docs/index.html" '<h1 id="hello">Hello</h1>'
+}
+
 test_hooks_run_and_after_failure_rolls_back()
 {
 	begin_test "hooks-and-rollback"
@@ -2328,6 +2402,8 @@ main()
 	test_early_build_failure_reports_original_error
 	test_build_uses_portable_mktemp_templates
 	test_page_argument_still_rebuilds_the_complete_site
+	test_build_jobs_match_serial_output
+	test_build_jobs_failure_names_pages_and_preserves_output
 	test_hooks_run_and_after_failure_rolls_back
 	test_custom_template_directory_is_supported
 	test_unsafe_output_and_core_asset_paths_are_rejected

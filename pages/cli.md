@@ -77,6 +77,14 @@ search record.
 The PHP engine is the default. Set `SMGEN_ENGINE=bash` to run the compatibility
 builder during migration or output comparison.
 
+Both engines render page templates one at a time, then convert every page with
+Pandoc concurrently. `BUILD_JOBS` sets how many Pandoc processes run at once;
+the default `auto` uses one per CPU. Pages are converted largest first, and the
+output is identical for any job count. Pandoc's warnings from different pages
+may interleave in the log, and a build that fails in this stage names every
+page that produced no output. Pin `BUILD_JOBS=1` for serial, reproducible
+timing or on hosts where memory is tight.
+
 SMGen renders into a temporary directory beside `OUTPUT_DIR`. It replaces the
 previous output after every page succeeds. A render failure leaves the previous
 output in place. If `after-smgen.sh` fails, SMGen restores the previous output.

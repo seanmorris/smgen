@@ -52,6 +52,8 @@ environment:
 - `FOOTER`: default footer include. Default: `templates/footer.php`.
 - `DEV_PORT`: port used by `serve` and `watch`. Default: `8000`.
 - `SMGEN_ENGINE`: build implementation, `php` or `bash`. Default: `php`.
+- `BUILD_JOBS`: number of Pandoc processes that convert pages at the same time,
+  or `auto` for one per CPU. Set `1` to convert pages one at a time. Default: `auto`.
 
 SMGen removes a trailing slash from `BASE_URL` when it joins URLs, so either
 form is accepted.

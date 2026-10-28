@@ -16,7 +16,7 @@ SCALAR_CONFIG_KEYS=(
 	BASE_URL OUTPUT_DIR PAGES_DIR TEMPLATE_DIR STATIC_DIR HELPERS_DIR
 	DEFAULT_THEME PRODUCT_NAME ORGANIZATION TAGLINE TITLE_PREFIX HIGHLIGHT_STYLE
 	HEADER FOOTER DEV_PORT INHERIT_CORE_STATIC SEARCH_ENABLED SEARCH_READER
-	PHP PANDOC YQ SMG_SEARCH ASPELL ASPELL_DICT SMGEN_ENVIRONMENT environment SMGEN_ENGINE
+	PHP PANDOC YQ SMG_SEARCH ASPELL ASPELL_DICT SMGEN_ENVIRONMENT environment SMGEN_ENGINE BUILD_JOBS
 )
 LIST_CONFIG_KEYS=(
 	STYLES INLINE_STYLES SCRIPTS DEFER_SCRIPTS INLINE_SCRIPTS
@@ -361,19 +361,39 @@ prepare_search_reader()
 	fi
 }
 
+resolve_build_jobs()
+{
+	local value=${BUILD_JOBS:-auto} detected
+	case "${value}" in
+		''|auto|AUTO|Auto)
+			detected=$(nproc 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || true)
+			[[ ${detected} =~ ^[1-9][0-9]*$ ]] && printf '%s\n' "${detected}" || printf '4\n'
+			;;
+		*)
+			if [[ ! ${value} =~ ^[1-9][0-9]*$ ]]; then
+				echo "BUILD_JOBS must be \"auto\" or a positive integer: ${value}" >&2
+				return 1
+			fi
+			printf '%s\n' "${value}"
+			;;
+	esac
+}
+
 build_site_bash()
 {
 	local requested_path=${1:-}
 	local output_parent output_name backup_path="" page_file relative_path
 	local directory base extension page_name destination template toc_value
-	local template_file style inline_style pages_root
+	local template_file style pages_root css_urls defaults_file
+	local build_jobs pandoc_status failed_pages index
 	local BUILD_DIR="" WORK_DIR="" NAV_DATA_FILE="" PAGE_MANIFEST="" OUTPUT_ABS=""
-	local -a php_args pandoc_args
+	local -a php_args defaults_files=() page_targets=() page_sources=() page_destinations=()
 	local -A output_destinations=()
 
 	require_command "${PHP}" "php"
 	require_command "${YQ}" "yq"
 	require_command "${PANDOC}" "pandoc"
+	require_command xargs
 	if ! "${PHP}" -r 'exit(extension_loaded("yaml") ? 0 : 1);'; then
 		echo "The PHP YAML extension is required." >&2
 		return 1
@@ -499,22 +519,52 @@ build_site_bash()
 		SMGEN_PROJECT_HELPERS_DIR="${HELPERS_DIR}" \
 		"${PHP}" "${php_args[@]}" "${template}" "${page_file}" > "${template_file}"
 
-		pandoc_args=(--data-dir=. -s -f markdown -t html)
-		[ -z "${HIGHLIGHT_STYLE}" ] || pandoc_args+=(--highlight-style "${HIGHLIGHT_STYLE}")
-		[ "${toc_value}" = "false" ] || pandoc_args+=(--toc)
-		[ -z "${TITLE_PREFIX}" ] || pandoc_args+=(--title-prefix "${TITLE_PREFIX}")
-		pandoc_args+=(--lua-filter="$(resolve_project_helper_path domain.lua)")
-		pandoc_args+=(--template="${template_file}")
-		while IFS= read -r inline_style; do
-			[ -n "${inline_style}" ] && pandoc_args+=(-H "${inline_style}")
-		done <<< "${INLINE_STYLES}"
+		css_urls=""
 		while IFS= read -r style; do
-			[ -n "${style}" ] && pandoc_args+=(--css "$(resolve_asset_url "${style}")")
+			[ -n "${style}" ] && css_urls+="$(resolve_asset_url "${style}")"$'\n'
 		done <<< "${STYLES}"
-		pandoc_args+=(-o "${BUILD_DIR}/${destination}" "${page_file}")
-		BASE_URL="${BASE_URL}" "${PANDOC}" "${pandoc_args[@]}"
-		printf '%s\t%s\n' "${destination}" "${page_file}" >> "${PAGE_MANIFEST}"
+		defaults_file=$(mktemp "${WORK_DIR}/pandoc.XXXXXX")
+		SMGEN_PANDOC_CSS="${css_urls}" SMGEN_PANDOC_HEADERS="${INLINE_STYLES}" "${PHP}" -r '
+			$lines = static fn(string $value): array => array_values(array_filter(explode("\n", $value), static fn(string $line): bool => $line !== ""));
+			$defaults = ["from" => "markdown", "to" => "html", "standalone" => true, "toc" => $argv[1] !== "false"];
+			if($argv[2] !== "") $defaults["highlight-style"] = $argv[2];
+			if($argv[3] !== "") $defaults["title-prefix"] = $argv[3];
+			$defaults["filters"] = [$argv[4]];
+			$defaults["template"] = $argv[5];
+			$defaults["include-in-header"] = $lines((string) getenv("SMGEN_PANDOC_HEADERS"));
+			$defaults["css"] = $lines((string) getenv("SMGEN_PANDOC_CSS"));
+			$defaults["output-file"] = $argv[6];
+			$defaults["input-files"] = [$argv[7]];
+			echo json_encode($defaults, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+		' -- "${toc_value}" "${HIGHLIGHT_STYLE}" "${TITLE_PREFIX}" "$(resolve_project_helper_path domain.lua)" \
+			"${template_file}" "${BUILD_DIR}/${destination}" "${page_file}" > "${defaults_file}"
+		defaults_files+=("${defaults_file}")
+		page_targets+=("${BUILD_DIR}/${destination}")
+		page_sources+=("${page_file}")
+		page_destinations+=("${destination}")
 	done < <(find "${pages_root}" -type f -print0)
+
+	if [ "${#defaults_files[@]}" -gt 0 ]; then
+		build_jobs=$(resolve_build_jobs) || return 1
+		echo -e "\e[37m  Converting ${#defaults_files[@]} page(s) with ${build_jobs} Pandoc job(s)...\e[0m"
+		pandoc_status=0
+		printf '%s\0' "${defaults_files[@]}" | BASE_URL="${BASE_URL}" xargs -0 -P "${build_jobs}" -n 1 "${PANDOC}" --data-dir=. -d || pandoc_status=$?
+		failed_pages=""
+		for index in "${!page_targets[@]}"; do
+			[ -f "${page_targets[${index}]}" ] || failed_pages+="${failed_pages:+, }${page_sources[${index}]}"
+		done
+		if [ -n "${failed_pages}" ]; then
+			echo "Pandoc failed for page(s): ${failed_pages}" >&2
+			return 1
+		fi
+		if [ "${pandoc_status}" -ne 0 ]; then
+			echo "Pandoc conversion failed with status ${pandoc_status}." >&2
+			return 1
+		fi
+		for index in "${!page_destinations[@]}"; do
+			printf '%s\t%s\n' "${page_destinations[${index}]}" "${page_sources[${index}]}" >> "${PAGE_MANIFEST}"
+		done
+	fi
 
 	if [ "${SEARCH_ENABLED}" = "1" ] && command -v "${SMG_SEARCH}" >/dev/null 2>&1; then
 		echo -e "\e[33;4mAssembling search index...\e[0m"

@@ -48,6 +48,7 @@ final class BuildEngine
 	/** Execute a validated build while the output-specific process lock is held. */
 	private function buildLocked(): void
 	{
+		$buildJobs = $this->resolveBuildJobs();
 		$environment = $this->config->environment();
 		$environment['SMGEN_CORE_DIR'] = $this->coreDir;
 		$environment['SMGEN_PROJECT_DIR'] = $this->projectDir;
@@ -114,10 +115,12 @@ final class BuildEngine
 
 			$this->templateRenderer = new TemplateRenderer($this->config, $this->templateRoot);
 			fwrite(STDOUT, "\033[33;4mBuilding pages...\033[0m\n");
+			$jobs = [];
 			foreach($pages as $page)
 			{
-				$this->buildPage($page, $buildDir, $workDir, $pageManifest, $siteStyles, $pluginEnvironment);
+				$jobs[] = $this->preparePage($page, $buildDir, $workDir, $siteStyles, $pluginEnvironment);
 			}
+			$this->renderPages($jobs, $buildJobs, $workDir, $pageManifest);
 
 			if($searchEnabled && $this->processes->commandExists((string) $this->config->get('SMG_SEARCH')))
 			{
@@ -248,6 +251,7 @@ final class BuildEngine
 		}
 		$this->processes->requireCommand((string) $this->config->get('PANDOC'), 'pandoc');
 		$this->processes->requireCommand((string) $this->config->get('PHP'), 'php');
+		$this->processes->requireCommand('xargs');
 		$this->resolveSourceRoots();
 		if($requestedPath !== null && $requestedPath !== '')
 		{
@@ -518,15 +522,19 @@ final class BuildEngine
 		return "---\n" . $yaml . "---\n\n";
 	}
 
-	/** Render one source through its PHP template and a dedicated Pandoc process. */
-	private function buildPage(
+	/**
+	 * Render one source through its PHP template and describe its Pandoc run.
+	 *
+	 * The template runs immediately; Pandoc runs later, concurrently with the other
+	 * pages, from the defaults file this method writes into the work directory.
+	 */
+	private function preparePage(
 		PageRecord $page,
 		string $buildDir,
 		string $workDir,
-		string $manifestPath,
 		array $siteStyles,
 		array $environment,
-	): void {
+	): array {
 		$target = Filesystem::assertNoSymlinkSegments($buildDir, $page->destination, 'Page output');
 		if(!is_dir(dirname($target)) && !mkdir(dirname($target), 0755, true) && !is_dir(dirname($target)))
 		{
@@ -562,36 +570,101 @@ final class BuildEngine
 		}
 
 		$toc = $page->frontmatter['TOC'] ?? $page->frontmatter['toc'] ?? true;
-		$pandoc = [(string) $this->config->get('PANDOC'), '--data-dir=.', '-s', '-f', 'markdown', '-t', 'html'];
+		$defaults = [
+			'from' => 'markdown',
+			'to' => 'html',
+			'standalone' => true,
+			'toc' => $toc !== false && $toc !== 'false',
+		];
 		$highlight = (string) $this->config->get('HIGHLIGHT_STYLE');
-		if($highlight !== '') $pandoc[] = '--highlight-style=' . $highlight;
-		if($toc !== false && $toc !== 'false') $pandoc[] = '--toc';
+		if($highlight !== '') $defaults['highlight-style'] = $highlight;
 		$titlePrefix = (string) $this->config->get('TITLE_PREFIX');
-		if($titlePrefix !== '') $pandoc[] = '--title-prefix=' . $titlePrefix;
-		$pandoc[] = '--lua-filter=' . $this->projectHelper('domain.lua');
-		foreach($contributions['filters'] as $filter)
+		if($titlePrefix !== '') $defaults['title-prefix'] = $titlePrefix;
+		$defaults['filters'] = array_merge([$this->projectHelper('domain.lua')], array_values($contributions['filters']));
+		$defaults['template'] = $templateFile;
+		$defaults['include-in-header'] = $this->stringList($this->config->get('INLINE_STYLES'), 'INLINE_STYLES');
+		$defaults['css'] = array_map(fn(string $style): string => $this->resolveAssetUrl($style), $styles);
+		$defaults['output-file'] = $target;
+		$defaults['input-files'] = [$page->source];
+
+		$defaultsFile = tempnam($workDir, 'pandoc.');
+		$encoded = json_encode($defaults, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+		if($defaultsFile === false || !is_string($encoded) || file_put_contents($defaultsFile, $encoded) === false)
 		{
-			$pandoc[] = '--lua-filter=' . $filter;
+			throw new \RuntimeException('Unable to write Pandoc defaults for page: ' . $page->source);
 		}
-		$pandoc[] = '--template=' . $templateFile;
-		foreach($this->stringList($this->config->get('INLINE_STYLES'), 'INLINE_STYLES') as $inlineStyle)
+		$size = filesize($page->source);
+		return [
+			'page' => $page,
+			'defaults' => $defaultsFile,
+			'target' => $target,
+			'size' => $size === false ? 0 : $size,
+		];
+	}
+
+	/**
+	 * Run Pandoc for every prepared page, several at a time, then record the manifest.
+	 *
+	 * Pages are queued largest first so the slowest conversions do not trail the
+	 * build. Pandoc only writes an output file on success, so a missing target
+	 * identifies each page that failed.
+	 */
+	private function renderPages(array $jobs, int $concurrency, string $workDir, string $manifestPath): void
+	{
+		if($jobs === []) return;
+		$queue = $jobs;
+		usort($queue, static fn(array $a, array $b): int => $b['size'] <=> $a['size']);
+		$listFile = $workDir . '/pandoc-jobs.list';
+		$list = implode('', array_map(static fn(array $job): string => $job['defaults'] . "\0", $queue));
+		if(file_put_contents($listFile, $list) === false)
 		{
-			$pandoc[] = '-H';
-			$pandoc[] = $inlineStyle;
+			throw new \RuntimeException('Unable to write the Pandoc job list: ' . $listFile);
 		}
-		foreach($styles as $style)
+		fwrite(STDOUT, "\033[37m  Converting " . count($jobs) . " page(s) with " . $concurrency . " Pandoc job(s)...\033[0m\n");
+		$xargs = ['xargs', '-0', '-P', (string) $concurrency, '-n', '1', (string) $this->config->get('PANDOC'), '--data-dir=.', '-d'];
+		$result = $this->processes->run($xargs, $this->projectDir, ['BASE_URL' => (string) $this->config->get('BASE_URL')], false, false, $listFile);
+		$failed = [];
+		foreach($jobs as $job)
 		{
-			$pandoc[] = '--css';
-			$pandoc[] = $this->resolveAssetUrl($style);
+			if(!is_file($job['target'])) $failed[] = $job['page']->source;
 		}
-		$pandoc[] = '-o';
-		$pandoc[] = $target;
-		$pandoc[] = $page->source;
-		$this->processes->mustRun($pandoc, $this->projectDir, ['BASE_URL' => (string) $this->config->get('BASE_URL')]);
-		if(file_put_contents($manifestPath, $page->destination . "\t" . $page->source . "\n", FILE_APPEND) === false)
+		if($failed !== [])
+		{
+			throw new \RuntimeException('Pandoc failed for ' . count($failed) . ' page(s): ' . implode(', ', $failed));
+		}
+		if($result->exitCode !== 0)
+		{
+			throw new \RuntimeException('Command failed with status ' . $result->exitCode . ': ' . implode(' ', $xargs));
+		}
+		$manifest = '';
+		foreach($jobs as $job)
+		{
+			$manifest .= $job['page']->destination . "\t" . $job['page']->source . "\n";
+		}
+		if(file_put_contents($manifestPath, $manifest, FILE_APPEND) === false)
 		{
 			throw new \RuntimeException('Unable to append to the page manifest: ' . $manifestPath);
 		}
+	}
+
+	/** Resolve BUILD_JOBS into the number of concurrent Pandoc processes. */
+	private function resolveBuildJobs(): int
+	{
+		$value = trim((string) $this->config->get('BUILD_JOBS', 'auto'));
+		if($value === '' || strtolower($value) === 'auto')
+		{
+			if($this->processes->commandExists('nproc'))
+			{
+				$detected = (int) trim($this->processes->run(['nproc'], $this->projectDir, [], true, true)->stdout);
+				if($detected >= 1) return $detected;
+			}
+			return 4;
+		}
+		if(!preg_match('/^[1-9][0-9]*$/', $value))
+		{
+			throw new \RuntimeException('BUILD_JOBS must be "auto" or a positive integer: ' . $value);
+		}
+		return (int) $value;
 	}
 
 	/** Select an explicit, extension-specific, reusable, or legacy page template. */

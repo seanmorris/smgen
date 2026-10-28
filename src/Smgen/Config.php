@@ -12,7 +12,7 @@ final class Config
 		'DEFAULT_THEME', 'PRODUCT_NAME', 'ORGANIZATION', 'TAGLINE', 'TITLE_PREFIX', 'HIGHLIGHT_STYLE',
 		'HEADER', 'FOOTER', 'DEV_PORT', 'INHERIT_CORE_STATIC', 'SEARCH_ENABLED', 'SEARCH_READER',
 		'PHP', 'PANDOC', 'YQ', 'SMG_SEARCH', 'ASPELL', 'ASPELL_DICT',
-		'SMGEN_ENVIRONMENT', 'environment', 'SMGEN_ENGINE',
+		'SMGEN_ENVIRONMENT', 'environment', 'SMGEN_ENGINE', 'BUILD_JOBS',
 	];
 
 	public const LIST_KEYS = [
@@ -48,6 +48,7 @@ final class Config
 		'SMGEN_ENVIRONMENT' => '',
 		'environment' => '',
 		'SMGEN_ENGINE' => 'php',
+		'BUILD_JOBS' => 'auto',
 		'STYLES' => [],
 		'INLINE_STYLES' => [],
 		'SCRIPTS' => [],

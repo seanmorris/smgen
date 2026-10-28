@@ -22,6 +22,7 @@ SMGen supports:
 - curated `llms.txt` indexes from page and directory frontmatter
 - sitemap generation
 - optional local search through `smgen-search`
+- concurrent Pandoc conversion sized to the machine (`BUILD_JOBS`)
 - atomic output replacement with rollback after failed builds
 - local serving, Linux file watching, and spell checking
 
@@ -32,6 +33,7 @@ Every build requires:
 - Bash 4 or newer
 - PHP 8.1 or newer with the YAML extension
 - Pandoc
+- `xargs` from findutils, preinstalled on Linux and macOS
 
 The npm installation method requires Node.js 20 or newer.
 

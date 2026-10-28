@@ -66,6 +66,7 @@ A build requires:
 - Bash 4 or newer
 - PHP 8.1 or newer with the YAML extension
 - Pandoc
+- `xargs` from findutils, preinstalled on Linux and macOS
 
 The npm installation method requires Node.js 20 or newer.
 

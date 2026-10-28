@@ -44,13 +44,14 @@ final class ProcessRunner
 		return $this->findExecutable($command) !== null;
 	}
 
-	/** Run one command without a shell and stream or capture its output. */
+	/** Run one command without a shell, optionally reading stdin from a file, and stream or capture its output. */
 	public function run(
 		array $command,
 		string $cwd,
 		array $environment = [],
 		bool $captureStdout = false,
 		bool $quietStderr = false,
+		?string $stdinFile = null,
 	): ProcessResult {
 		if($command === [])
 		{
@@ -58,7 +59,7 @@ final class ProcessRunner
 		}
 		$command = array_map(static fn(mixed $part): string => (string) $part, $command);
 		$descriptorSpec = [
-			0 => ['file', 'php://stdin', 'r'],
+			0 => ['file', $stdinFile ?? 'php://stdin', 'r'],
 			1 => ['pipe', 'w'],
 			2 => ['pipe', 'w'],
 		];
