@@ -28,7 +28,6 @@ const DEFAULTS = [
 	'SEARCH_ENABLED' => 0,
 	'SEARCH_READER' => '/vendor/smgen-search/SearchReader.mjs',
 	'SMG_SEARCH' => 'smgen-search',
-	'ARCHIVE_TITLE' => 'Archive',
 	'NAVIGATION_WIDGETS' => ['tree'],
 	'PLUGINS' => [],
 	'MENUS' => [],
