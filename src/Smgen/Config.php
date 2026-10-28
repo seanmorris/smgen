@@ -11,7 +11,7 @@ final class Config
 		'BASE_URL', 'OUTPUT_DIR', 'PAGES_DIR', 'TEMPLATE_DIR', 'STATIC_DIR', 'HELPERS_DIR',
 		'DEFAULT_THEME', 'PRODUCT_NAME', 'ORGANIZATION', 'TAGLINE', 'TITLE_PREFIX', 'HIGHLIGHT_STYLE',
 		'HEADER', 'FOOTER', 'DEV_PORT', 'INHERIT_CORE_STATIC', 'SEARCH_ENABLED', 'SEARCH_READER',
-		'ARCHIVE_TITLE', 'PHP', 'PANDOC', 'YQ', 'SMG_SEARCH', 'ASPELL', 'ASPELL_DICT',
+		'PHP', 'PANDOC', 'YQ', 'SMG_SEARCH', 'ASPELL', 'ASPELL_DICT',
 		'SMGEN_ENVIRONMENT', 'environment', 'SMGEN_ENGINE',
 	];
 
@@ -39,7 +39,6 @@ final class Config
 		'INHERIT_CORE_STATIC' => '0',
 		'SEARCH_ENABLED' => 'auto',
 		'SEARCH_READER' => '/vendor/smgen-search/SearchReader.mjs',
-		'ARCHIVE_TITLE' => 'Archive',
 		'PHP' => 'php',
 		'PANDOC' => 'pandoc',
 		'YQ' => 'yq',

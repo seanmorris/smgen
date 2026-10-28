@@ -119,6 +119,7 @@ Use `CORE_ASSETS` to copy selected built-in files instead:
 
 ```yaml
 CORE_ASSETS:
+  - scrollbar.css
   - default.css
   - main.js
   - search.svg
@@ -144,10 +145,10 @@ loads the reader and index.
 
 ## Navigation
 
-These legacy settings remain supported:
+One legacy setting remains supported:
 
-- `NAVIGATION_WIDGETS`: ordered `tree` and `archive` widgets. Default: `tree`.
-- `ARCHIVE_TITLE`: heading for the legacy archive widget. Default: `Archive`.
+- `NAVIGATION_WIDGETS`: the `tree` widget for sites without `MENU_REGIONS`.
+  Default: `tree`.
 
 `PLUGINS` is an ordered list of plugin manifest paths, local npm package names,
 or structured activations. Structured entries can set `use`, `options`,

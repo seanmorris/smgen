@@ -51,9 +51,9 @@ A `---` horizontal rule later in an ordinary Markdown page is valid.
 
 ## Why did a build edit my page source?
 
-A page selected into a timeline needs `date` or `created`. If both are absent,
-SMGen derives a creation time and writes one `created` field after menu
-validation succeeds. Supply either field yourself to prevent that write.
+A page selected into an `smgen-timeline` menu needs `date` or `created`. If
+both are absent, the plugin derives a creation time and writes one `created`
+field after menu validation succeeds.
 
 SMGen does not generate `modified`.
 
@@ -97,7 +97,7 @@ hook recreates them.
 ## Why does a menu fail to build?
 
 SMGen validates menu names, fields, renderers, link targets, parents, cycles,
-regions, and timeline entries. Read the first error printed by the build. The
+regions, and renderer results. Read the first error printed by the build. The
 message includes the menu, provider, page, or field that failed validation.
 
 Common causes include:
@@ -105,7 +105,7 @@ Common causes include:
 - a region names an undefined menu
 - a link defines more than one of `page`, `href`, or `group`
 - a parent ID does not exist in the same menu
-- a timeline contains an external or group link
+- a plugin renderer rejects a link, such as a timeline holding a group
 - a page names a menu that has no definition
 
 See [Navigation and Plugins](navigation.html) for the complete schema.

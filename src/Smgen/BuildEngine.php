@@ -99,12 +99,12 @@ final class BuildEngine
 			$this->copyStaticAssets($buildDir, $selectedPlugins);
 
 			$siteStyles = $this->stringList($this->config->get('STYLES'), 'STYLES');
-			if(in_array('/archive.css', $navigation['assets'] ?? [], true) && !in_array('/archive.css', $siteStyles, true))
+			foreach($navigation['assets'] ?? [] as $navigationAsset)
 			{
-				$siteStyles[] = '/archive.css';
-				if(!is_file($buildDir . '/archive.css'))
+				$navigationAsset = (string) $navigationAsset;
+				if(!in_array($navigationAsset, $siteStyles, true))
 				{
-					Filesystem::copyEntry($this->coreDir . '/static/archive.css', $buildDir . '/archive.css');
+					$siteStyles[] = $navigationAsset;
 				}
 			}
 			$searchEnabled = $this->resolveSearchSetting($buildDir);

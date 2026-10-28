@@ -79,10 +79,16 @@ hooks:
   finalize:
     run: [php, ./bin/finalize.php]
 
+renderers:
+  reading-list: helpers/reading-list.php
+
 watch:
   - static
   - filters
 ```
+
+`renderers` maps menu renderer names to PHP files; see
+[Plugin Renderers](navigation.html#plugin-renderers) for the file contract.
 
 The plugin ID may contain letters, numbers, periods, underscores, and hyphens.
 SMGen rejects duplicate IDs, unsupported API versions, unknown fields, and

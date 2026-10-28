@@ -141,7 +141,6 @@ make_temp_site()
 	mkdir -p "${temp_dir}/docs" "${temp_dir}/pages" "${temp_dir}/static" "${temp_dir}/templates"
 	cp "${ROOT_DIR}/templates/"*.php "${temp_dir}/templates/"
 	cp -Rp "${ROOT_DIR}/static/." "${temp_dir}/static/"
-	rm -f "${temp_dir}/static/archive.css"
 	cp "${ROOT_DIR}/.smgen-rc-default" "${temp_dir}/.smgen-rc"
 	printf '%s\n' '---' 'title: Home' '---' '' '# Hello' > "${temp_dir}/pages/index.md"
 	echo "${temp_dir}"
@@ -178,7 +177,6 @@ EOF
 	assert_file_exists "${site}/public/index.html"
 	assert_file_exists "${site}/static/vendor/smgen-search/SearchReader.mjs"
 	assert_file_contains "${site}/public/index.html" 'Initialized'
-	assert_file_missing "${site}/public/archive.css"
 }
 
 test_php_engine_has_descriptive_docblocks()
@@ -243,10 +241,8 @@ test_default_build_generates_expected_output()
 	assert_file_excludes "${site}/docs/index.html" 'http://localhost:8000/main.js'
 	assert_file_exists "${site}/docs/default.css"
 	assert_file_exists "${site}/docs/main.js"
-	assert_file_excludes "${site}/docs/index.html" '/archive.css'
 	assert_file_excludes "${site}/docs/index.html" 'application/rss+xml'
 	assert_file_excludes "${site}/docs/index.html" 'href="/llms.txt"'
-	assert_file_missing "${site}/docs/archive.css"
 	assert_file_missing "${site}/docs/llms.txt"
 }
 
@@ -1575,124 +1571,7 @@ EOF
 	assert_file_contains "${site}/docs/index.html" '<h1 id="hello">Hello</h1>'
 }
 
-test_archive_navigation_builds_static_calendar_and_timeline()
-{
-	begin_test "archive-navigation"
-	local site
-	site="$(make_temp_site)"
-	CURRENT_SITE="${site}"
-
-	cat >> "${site}/.smgen-rc" <<'EOF'
-
-ARCHIVE_TITLE="Publication timeline"
-NAVIGATION_WIDGETS=$(cat <<-END
-	tree
-	archive
-END
-)
-EOF
-	rm -f "${site}/static/archive.css"
-
-	cat > "${site}/pages/latest.md" <<'EOF'
----
-title: Latest post
-date: 2026-10-21T18:30:00Z
-leftBarLink: false
----
-
-# Latest
-EOF
-	cat > "${site}/pages/same-day.md" <<'EOF'
----
-title: Earlier that day
-date: 2026-10-21T08:00:00Z
-leftBarLink: false
----
-
-# Same day
-EOF
-	cat > "${site}/pages/september.md" <<'EOF'
----
-title: September post
-date: 2026-09-03
-leftBarLink: false
----
-
-# September
-EOF
-	cat > "${site}/pages/older.md" <<'EOF'
----
-title: Older post
-date: 2025-05-04
-leftBarLink: false
----
-
-# Older
-EOF
-	cat > "${site}/pages/private.md" <<'EOF'
----
-title: Private dated page
-date: 2026-10-20
-archive: false
-leftBarLink: false
----
-
-# Private
-EOF
-
-	(
-		cd "${site}"
-		BASE_URL=https://example.test/blog "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}.log" 2>&1
-	)
-
-	assert_file_contains "${site}/docs/index.html" 'aria-label="Publication timeline"'
-	assert_file_contains "${site}/docs/index.html" 'href="https://example.test/blog/archive.css"'
-	assert_file_exists "${site}/docs/archive.css"
-	assert_file_contains "${site}/docs/index.html" 'class="archive-calendar"'
-	assert_file_contains "${site}/docs/index.html" '>October 2026 publication calendar</caption>'
-	assert_file_contains "${site}/docs/index.html" 'data-id-path="archive-2026"'
-	assert_file_contains "${site}/docs/index.html" 'data-id-path="archive-2026-10"'
-	assert_file_contains "${site}/docs/index.html" '<span class="archive-count">(3)</span>'
-	assert_file_contains "${site}/docs/index.html" 'aria-label="October 21, 2026: 2 posts"'
-	assert_file_contains "${site}/docs/index.html" '<span class="archive-day-count" aria-hidden="true">2</span>'
-	assert_file_contains "${site}/docs/index.html" 'href="https://example.test/blog/latest.html"'
-	assert_file_contains "${site}/docs/index.html" 'Latest post'
-	assert_file_contains "${site}/docs/index.html" '>Home'
-	assert_file_excludes "${site}/docs/index.html" 'Private dated page'
-
-	assert_file_contains "${site}/docs/older.html" '>May 2025 publication calendar</caption>'
-	assert_file_contains "${site}/docs/older.html" '<details open data-id-path="archive-2025"'
-	assert_file_contains "${site}/docs/older.html" '<details open data-id-path="archive-2025-05"'
-	assert_file_contains "${site}/docs/older.html" 'aria-current="date"'
-	assert_file_contains "${site}/docs/older.html" 'class="active-link" aria-current="page"'
-	assert_file_excludes "${site}/docs/older.html" 'archive.js'
-	assert_file_excludes "${ROOT_DIR}/static/default.css" '.archive-calendar'
-}
-
-test_archive_navigation_rejects_invalid_dates()
-{
-	begin_test "archive-invalid-date"
-	local site
-	site="$(make_temp_site)"
-	CURRENT_SITE="${site}"
-	printf '\nNAVIGATION_WIDGETS=archive\n' >> "${site}/.smgen-rc"
-	cat > "${site}/pages/broken.md" <<'EOF'
----
-title: Broken date
-date: definitely-not-a-date
----
-
-# Broken
-EOF
-
-	(
-		cd "${site}"
-		assert_command_fails "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}.log" 2>&1
-	)
-	assert_file_contains "${DEBUG_DIR}/${CURRENT_TEST}.log" 'Invalid archive date'
-}
-
-test_named_menus_plugins_and_timeline_backfill()
+test_named_menus_and_plugin_contributions()
 {
 	begin_test "named-menus"
 	local site checksum
@@ -1721,12 +1600,9 @@ MENUS:
     label: Documentation
     renderer: tree
     hierarchy: source
-  archive:
-    label: Site Archive
-    renderer: timeline
 MENU_REGIONS:
   header: [primary]
-  sidebar: [documentation, archive]
+  sidebar: [documentation]
 EOF
 
 	cat > "${site}/plugins/example/smgen.plugin.yaml" <<'EOF'
@@ -1783,15 +1659,6 @@ menus:
 
 # Hidden
 EOF
-	cat > "${site}/pages/undated.md" <<'EOF'
----
-title: Undated Post
-menus:
-  archive: true
----
-
-# Undated
-EOF
 
 	(
 		cd "${site}"
@@ -1805,21 +1672,121 @@ EOF
 	assert_file_contains "${site}/docs/index.html" 'Plugin Guides'
 	assert_file_contains "${site}/docs/index.html" 'Public Guide'
 	assert_file_excludes "${site}/docs/index.html" 'Hidden Guide'
-	assert_file_contains "${site}/docs/index.html" 'aria-label="Site Archive"'
-	assert_file_contains "${site}/docs/index.html" 'Undated Post'
-	assert_file_contains "${site}/docs/index.html" 'href="https://example.test/archive.css"'
-	assert_file_exists "${site}/docs/archive.css"
-	assert_file_excludes "${site}/docs/index.html" 'archive.js'
-	assert_file_contains "${site}/pages/undated.md" "created: '"
-	assert_file_excludes "${site}/pages/undated.md" 'modified:'
 	assert_file_contains "${site}/docs/sitemap.xml" '<lastmod>2024-05-06</lastmod>'
+}
 
-	checksum="$(cksum "${site}/pages/undated.md")"
+test_plugin_renderers_compile_render_and_report_missing_plugins()
+{
+	begin_test "plugin-renderers"
+	local site
+	site="$(make_temp_site)"
+	CURRENT_SITE="${site}"
+	rm "${site}/.smgen-rc"
+	mkdir -p "${site}/plugins/counter/helpers" "${site}/plugins/counter/static"
+
+	cat > "${site}/.smgen.yaml" <<'EOF'
+BASE_URL: https://example.test
+SEARCH_ENABLED: 0
+STYLES:
+  - /default.css
+PLUGINS:
+  - plugins/counter/smgen.plugin.yaml
+MENUS:
+  dated:
+    label: Dated pages
+    renderer: counter
+MENU_REGIONS:
+  sidebar: [dated]
+EOF
+	cat > "${site}/plugins/counter/smgen.plugin.yaml" <<'EOF'
+apiVersion: smgen/v1
+id: counter
+renderers:
+  counter: helpers/counter.php
+alter: helpers/alter.php
+assets:
+  - from: static
+    to: counter
+EOF
+	cat > "${site}/plugins/counter/helpers/alter.php" <<'EOF'
+<?php
+return static function(array &$registry, array $catalog): void {
+	foreach($catalog['pages'] as $page)
+	{
+		if(array_key_exists('date', $page['metadata']))
+		{
+			navigationPutPageLink($registry['links'], 'dated', $page, [], 'counter plugin');
+		}
+	}
+};
+EOF
+	cat > "${site}/plugins/counter/helpers/counter.php" <<'EOF'
+<?php
+return [
+	'compile' => static function(array $menu, array $links, array $catalog, array $context): array {
+		$menu['count'] = count($links);
+		$menu['titles'] = array_map(static fn(array $link): string => (string) $link['title'], $links);
+		sort($menu['titles']);
+		foreach($catalog['pages'] as $page)
+		{
+			if(($page['metadata']['title'] ?? '') === 'Stamp me')
+			{
+				$context['stampCreated']($page['absolute'], 1700000000);
+			}
+		}
+		return $menu;
+	},
+	'assets' => static fn(array $menu): array => $menu['count'] > 0 ? ['/counter/counter.css'] : [],
+	'render' => static function(array $menu, string $idPath, array $context): void {
+		echo '<p class="counter" data-current="', escapeHtml($context['currentPage']), '">', $menu['count'], ' dated: ', escapeHtml(implode(', ', $menu['titles'])), '</p>';
+	},
+];
+EOF
+	printf '%s\n' '.counter { font-weight: bold; }' > "${site}/plugins/counter/static/counter.css"
+	cat > "${site}/pages/one.md" <<'EOF'
+---
+title: First dated
+date: 2026-01-02
+---
+
+# One
+EOF
+	cat > "${site}/pages/two.md" <<'EOF'
+---
+title: Stamp me
+date: 2026-02-03
+---
+
+# Two
+EOF
+
 	(
 		cd "${site}"
-		"${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-second.log" 2>&1
+		"${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}.log" 2>&1
 	)
-	[ "${checksum}" = "$(cksum "${site}/pages/undated.md")" ] || fail "timeline timestamp backfill was not idempotent"
+
+	assert_file_contains "${site}/docs/index.html" '2 dated: First dated, Stamp me'
+	assert_file_contains "${site}/docs/one.html" 'data-current="/one.html"'
+	assert_file_contains "${site}/docs/index.html" 'href="https://example.test/counter/counter.css"'
+	assert_file_exists "${site}/docs/counter/counter.css"
+	assert_file_contains "${site}/pages/two.md" "created: '2023-11-14T22:13:20+00:00'"
+	assert_file_excludes "${site}/pages/one.md" 'created:'
+
+	cat > "${site}/.smgen.yaml" <<'EOF'
+BASE_URL: https://example.test
+SEARCH_ENABLED: 0
+MENUS:
+  dated:
+    renderer: timeline
+MENU_REGIONS:
+  sidebar: [dated]
+EOF
+	(
+		cd "${site}"
+		assert_command_fails "${SMGEN}" build > "${DEBUG_DIR}/${CURRENT_TEST}-missing.log" 2>&1
+	)
+	assert_file_contains "${DEBUG_DIR}/${CURRENT_TEST}-missing.log" 'Unknown renderer "timeline" for menu dated'
+	assert_file_contains "${DEBUG_DIR}/${CURRENT_TEST}-missing.log" 'smgen-timeline'
 }
 
 test_named_menu_validation_preserves_output()
@@ -2315,9 +2282,8 @@ main()
 	test_llms_heading_fallback_respects_fence_delimiters
 	test_named_rss_feeds_use_page_flags_and_dates
 	test_rss_validation_preserves_sources_and_output
-	test_archive_navigation_builds_static_calendar_and_timeline
-	test_archive_navigation_rejects_invalid_dates
-	test_named_menus_plugins_and_timeline_backfill
+	test_named_menus_and_plugin_contributions
+	test_plugin_renderers_compile_render_and_report_missing_plugins
 	test_named_menu_validation_preserves_output
 	test_external_links_use_noopener
 	test_primary_mousedown_starts_navigation

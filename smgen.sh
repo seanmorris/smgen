@@ -15,7 +15,7 @@ PROJECT_DIR=$(pwd -P)
 SCALAR_CONFIG_KEYS=(
 	BASE_URL OUTPUT_DIR PAGES_DIR TEMPLATE_DIR STATIC_DIR HELPERS_DIR
 	DEFAULT_THEME PRODUCT_NAME ORGANIZATION TAGLINE TITLE_PREFIX HIGHLIGHT_STYLE
-	HEADER FOOTER DEV_PORT INHERIT_CORE_STATIC SEARCH_ENABLED SEARCH_READER ARCHIVE_TITLE
+	HEADER FOOTER DEV_PORT INHERIT_CORE_STATIC SEARCH_ENABLED SEARCH_READER
 	PHP PANDOC YQ SMG_SEARCH ASPELL ASPELL_DICT SMGEN_ENVIRONMENT environment SMGEN_ENGINE
 )
 LIST_CONFIG_KEYS=(
@@ -48,21 +48,20 @@ list_has_value()
 configure_navigation_assets()
 {
 	local navigation_file=${1:-}
+	local asset
 
-	if [ -n "${navigation_file}" ] && [ -f "${navigation_file}" ]; then
-		"${PHP}" -r '
-			$data = json_decode(file_get_contents($argv[1]), true);
-			exit(in_array("/archive.css", $data["assets"] ?? [], true) ? 0 : 1);
-		' "${navigation_file}" || return 0
-	else
-		list_has_value "${NAVIGATION_WIDGETS}" archive || return 0
-	fi
-	list_has_value "${STYLES}" /archive.css && return 0
-
-	if [ -n "${STYLES}" ]; then
-		STYLES+=$'\n'
-	fi
-	STYLES+="/archive.css"
+	[ -n "${navigation_file}" ] && [ -f "${navigation_file}" ] || return 0
+	while IFS= read -r asset; do
+		[ -n "${asset}" ] || continue
+		list_has_value "${STYLES}" "${asset}" && continue
+		if [ -n "${STYLES}" ]; then
+			STYLES+=$'\n'
+		fi
+		STYLES+="${asset}"
+	done < <("${PHP}" -r '
+		$data = json_decode(file_get_contents($argv[1]), true);
+		foreach($data["assets"] ?? [] as $asset) echo $asset, "\n";
+	' "${navigation_file}")
 }
 
 load_config()
@@ -362,16 +361,6 @@ prepare_search_reader()
 	fi
 }
 
-prepare_navigation_assets()
-{
-	local destination_dir=$1
-
-	list_has_value "${STYLES}" /archive.css || return 0
-	if [ ! -f "${destination_dir}/archive.css" ]; then
-		cp "${SMGEN_CORE_STATIC_DIR}/archive.css" "${destination_dir}/archive.css"
-	fi
-}
-
 build_site_bash()
 {
 	local requested_path=${1:-}
@@ -443,7 +432,6 @@ build_site_bash()
 	export SMGEN_NAV_DATA="${NAV_DATA_FILE}"
 	configure_navigation_assets "${NAV_DATA_FILE}"
 	export STYLES
-	prepare_navigation_assets "${BUILD_DIR}"
 	prepare_search_reader "${BUILD_DIR}"
 
 	php_args=(
@@ -657,7 +645,7 @@ EOF
 		else
 			cp "${SCRIPT_DIR}/templates/page.php" "${SCRIPT_DIR}/templates/header.php" "${SCRIPT_DIR}/templates/footer.php" templates/
 		fi
-		cp "${SCRIPT_DIR}/static/default.css" "${SCRIPT_DIR}/static/main.js" "${SCRIPT_DIR}/static/search.js" static/
+		cp "${SCRIPT_DIR}/static/default.css" "${SCRIPT_DIR}/static/scrollbar.css" "${SCRIPT_DIR}/static/main.js" "${SCRIPT_DIR}/static/search.js" static/
 		cp "${SCRIPT_DIR}/static/search.svg" "${SCRIPT_DIR}/static/github.svg" "${SCRIPT_DIR}/static/logo.svg" static/
 		cp "${SCRIPT_DIR}/static/sun.svg" "${SCRIPT_DIR}/static/moon.svg" static/
 		cp "${SCRIPT_DIR}/static/icon-16.png" "${SCRIPT_DIR}/static/sitemap-badge.png" static/

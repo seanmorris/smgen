@@ -36,6 +36,11 @@ file publishes it, while `STYLES` tells the page template to link it.
 scripts that do not need to block HTML parsing. `BODY_SCRIPTS` emits scripts
 before the closing body tag.
 
+Load the built-in `nav-state.js` through `SCRIPTS`, not `DEFER_SCRIPTS`. It
+applies each visitor's remembered open or closed menu groups while the parser
+inserts them, so a collapsed group never flashes open before the first paint.
+Deferred, it can only correct the page after it has been drawn.
+
 Inline local files when an extra request would cost more than the added HTML:
 
 ```yaml
@@ -67,6 +72,7 @@ Copy selected files only:
 
 ```yaml
 CORE_ASSETS:
+  - scrollbar.css
   - default.css
   - main.js
   - search.svg
@@ -94,8 +100,24 @@ properties. Load a theme after `default.css` and override the values you need:
 ```yaml
 DEFAULT_THEME: theme-project
 STYLES:
+  - /scrollbar.css
   - /default.css
   - /theme.css
+```
+
+`scrollbar.css` ships beside the default stylesheet. It reserves the viewport
+scrollbar gutter so centred content does not shift between pages that scroll
+and pages that do not, and draws a thin scrollbar in a muted thumb colour. Set
+`--scrollbar-thumb` in a theme to change that colour. New projects list it
+before `default.css`; a site with its own stylesheet can use the same rules
+without the rest of the default theme:
+
+```yaml
+CORE_ASSETS:
+  - scrollbar.css
+STYLES:
+  - /scrollbar.css
+  - /site.css
 ```
 
 Use `pandoc --list-highlight-styles` to list accepted values for
@@ -234,8 +256,8 @@ rebuild produces the same site from the same sources.
 
 Define menus and regions in YAML, then render them from templates. The
 [Navigation and Plugins](navigation.html) page documents menu fields, page
-membership, timelines, plugin selectors, and alter hooks.
+membership, plugin renderers, plugin selectors, and alter hooks.
 
-The original `renderNavBar()`, `leftBarLink`, `leftBarShow`,
-`NAVIGATION_WIDGETS`, and `ARCHIVE_TITLE` interfaces remain available for older
+The original `renderNavBar()`, `leftBarLink`, `leftBarShow`, and
+`NAVIGATION_WIDGETS` interfaces remain available for older
 projects.

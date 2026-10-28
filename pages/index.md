@@ -169,7 +169,7 @@ smgen watch
 - [Writing Pages](writing-pages.html): page metadata, directory metadata, and output paths
 - [CLI Reference](cli.html): every command and its requirements
 - [Configuration](configuration.html): precedence, defaults, assets, paths, and search
-- [Navigation and Plugins](navigation.html): menus, regions, timelines, and plugins
+- [Navigation and Plugins](navigation.html): menus, regions, renderers, and plugins
 - [Build Plugins](plugins.html): selected assets, generated pages, filters, and build hooks
 - [RSS Feeds](rss.html): named feeds, page membership, dates, and output
 - [llms.txt](llms.html): a curated machine-readable index of generated pages

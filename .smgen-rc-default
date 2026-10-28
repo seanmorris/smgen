@@ -5,6 +5,7 @@ BASE_URL=${BASE_URL:-}
 DEFAULT_THEME=theme-default
 
 STYLES=$( cat <<-END
+	${BASE_URL}/scrollbar.css
 	${BASE_URL}/default.css
 END
 )

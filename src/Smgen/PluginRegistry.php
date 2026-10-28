@@ -44,7 +44,7 @@ final class PluginRegistry
 	{
 		foreach($this->plugins as $plugin)
 		{
-			if(isset($plugin->manifest['alter']))
+			if(isset($plugin->manifest['alter']) || !empty($plugin->manifest['renderers']))
 			{
 				return true;
 			}
@@ -324,11 +324,34 @@ final class PluginRegistry
 	/** Validate the fields and value shapes defined by the smgen/v1 manifest. */
 	private function validateVersionedManifest(array $manifest, string $path): void
 	{
-		$allowed = ['apiVersion', 'id', 'menus', 'alter', 'pages', 'assets', 'hooks', 'watch'];
+		$allowed = ['apiVersion', 'id', 'menus', 'alter', 'renderers', 'pages', 'assets', 'hooks', 'watch'];
 		$this->rejectUnknownFields($manifest, $allowed, 'plugin manifest ' . $path);
 		if(isset($manifest['alter']) && !is_string($manifest['alter']))
 		{
 			throw new \RuntimeException('Plugin alter must be a path in ' . $path . '.');
+		}
+		if(isset($manifest['renderers']))
+		{
+			if(!is_array($manifest['renderers']) || ($manifest['renderers'] !== [] && self::isList($manifest['renderers'])))
+			{
+				throw new \RuntimeException('Plugin renderers must be a mapping of names to files in ' . $path . '.');
+			}
+			foreach($manifest['renderers'] as $name => $file)
+			{
+				if(!is_string($name) || !preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]*$/', $name) || in_array($name, ['flat', 'tree'], true))
+				{
+					throw new \RuntimeException('Plugin renderer names must be tokens other than flat or tree in ' . $path . '.');
+				}
+				if(!is_string($file) || trim($file) === '')
+				{
+					throw new \RuntimeException('Plugin renderer ' . $name . ' must name a file in ' . $path . '.');
+				}
+				Filesystem::canonicalFileWithin(
+					Filesystem::resolveProjectPath(dirname($path), $file),
+					dirname($path),
+					'Renderer ' . $name . ' for plugin manifest ' . $path,
+				);
+			}
 		}
 		if(isset($manifest['pages']))
 		{

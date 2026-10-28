@@ -70,28 +70,6 @@ function navigationRejectUnknownKeys($value, $allowed, $context)
 	}
 }
 
-function normalizeArchiveDate($value, $path)
-{
-	if(!is_string($value) && !is_int($value) && !is_float($value))
-	{
-		throw new \RuntimeException('Archive date must be a string or number: ' . $path);
-	}
-	$value = trim((string) $value);
-	if($value === '')
-	{
-		throw new \RuntimeException('Archive date must not be empty: ' . $path);
-	}
-	try
-	{
-		$date = new \DateTimeImmutable($value);
-	}
-	catch(\Exception $exception)
-	{
-		throw new \RuntimeException('Invalid archive date in ' . $path . ': ' . $value, 0, $exception);
-	}
-	return ['date' => $date->format('Y-m-d'), 'timestamp' => $date->getTimestamp()];
-}
-
 function navigationScanCatalog($path, $rootPath, $relativeDirectory, &$pages, &$directories, $ancestorVisible = true)
 {
 	$entries = scandir($path);
@@ -620,53 +598,6 @@ function navigationBuildLinkTree($menuName, $links)
 	return $result;
 }
 
-function navigationRunCommand($command)
-{
-	if(!function_exists('exec'))
-	{
-		return '';
-	}
-	$output = [];
-	$status = 0;
-	exec($command . ' 2>/dev/null', $output, $status);
-	return $status === 0 ? trim(implode("\n", $output)) : '';
-}
-
-function navigationFilesystemBirthTime($path)
-{
-	$quoted = escapeshellarg($path);
-	if(PHP_OS_FAMILY === 'Darwin' || PHP_OS_FAMILY === 'BSD')
-	{
-		$value = navigationRunCommand('stat -f %B ' . $quoted);
-		return ctype_digit($value) && (int) $value > 0 ? (int) $value : null;
-	}
-	$value = navigationRunCommand('stat -c %W -- ' . $quoted);
-	return ctype_digit($value) && (int) $value > 0 ? (int) $value : null;
-}
-
-function navigationGitCreatedTime($path)
-{
-	$project = realpath(getenv('SMGEN_PROJECT_DIR') ?: getcwd());
-	if(!$project)
-	{
-		return null;
-	}
-	$root = navigationRunCommand('git -C ' . escapeshellarg($project) . ' rev-parse --show-toplevel');
-	if($root === '' || strpos($path, rtrim($root, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR) !== 0)
-	{
-		return null;
-	}
-	$relative = str_replace(DIRECTORY_SEPARATOR, '/', substr($path, strlen(rtrim($root, DIRECTORY_SEPARATOR)) + 1));
-	$dates = navigationRunCommand('git -C ' . escapeshellarg($root) . ' log --follow --diff-filter=A --format=%aI -- ' . escapeshellarg($relative));
-	if($dates === '')
-	{
-		return null;
-	}
-	$lines = preg_split('/\R/', $dates, -1, PREG_SPLIT_NO_EMPTY);
-	$timestamp = strtotime(end($lines));
-	return $timestamp === false ? null : $timestamp;
-}
-
 function navigationWriteCreated($path, $timestamp)
 {
 	$contents = file_get_contents($path);
@@ -724,71 +655,6 @@ function navigationWriteCreated($path, $timestamp)
 	return $value;
 }
 
-function navigationResolveTimelineDate(&$page, &$pendingCreated)
-{
-	if(array_key_exists('date', $page['metadata']))
-	{
-		return normalizeArchiveDate($page['metadata']['date'], $page['absolute']);
-	}
-	if(array_key_exists('created', $page['metadata']))
-	{
-		return normalizeArchiveDate($page['metadata']['created'], $page['absolute']);
-	}
-
-	$timestamp = navigationFilesystemBirthTime($page['absolute'])
-		?? navigationGitCreatedTime($page['absolute'])
-		?? filemtime($page['absolute']);
-	if($timestamp === false || $timestamp === null)
-	{
-		throw new \RuntimeException('Unable to determine creation time for timeline page: ' . $page['source']);
-	}
-	$page['metadata']['created'] = gmdate('Y-m-d\TH:i:sP', $timestamp);
-	$pendingCreated[$page['absolute']] = $timestamp;
-	return normalizeArchiveDate($page['metadata']['created'], $page['absolute']);
-}
-
-function buildArchiveNavigation($pages)
-{
-	usort($pages, function($a, $b) {
-		if($a['timestamp'] === $b['timestamp'])
-		{
-			return strcmp($a['path'], $b['path']);
-		}
-		return $b['timestamp'] <=> $a['timestamp'];
-	});
-
-	$years = [];
-	foreach($pages as $page)
-	{
-		$year = substr($page['date'], 0, 4);
-		$month = substr($page['date'], 0, 7);
-		if(!isset($years[$year]))
-		{
-			$years[$year] = ['year' => $year, 'count' => 0, 'months' => []];
-		}
-		if(!isset($years[$year]['months'][$month]))
-		{
-			$date = \DateTimeImmutable::createFromFormat('!Y-m', $month);
-			$years[$year]['months'][$month] = [
-				'month' => $month,
-				'name' => $date->format('F'),
-				'count' => 0,
-				'pages' => [],
-			];
-		}
-		unset($page['timestamp']);
-		$years[$year]['count']++;
-		$years[$year]['months'][$month]['count']++;
-		$years[$year]['months'][$month]['pages'][] = $page;
-	}
-	foreach($years as &$year)
-	{
-		$year['months'] = array_values($year['months']);
-	}
-	unset($year);
-	return ['years' => array_values($years)];
-}
-
 function navigationLegacyWidgets()
 {
 	return array_map('strval', getConf('NAVIGATION_WIDGETS') ?: ['tree']);
@@ -818,16 +684,10 @@ function compileNavigationData($rootArgument, $pluginPaths = null)
 			'hierarchy' => 'source',
 			'showLabel' => false,
 		],
-		'archive' => [
-			'name' => 'archive',
-			'label' => getConf('ARCHIVE_TITLE') ?: 'Archive',
-			'renderer' => 'timeline',
-			'hierarchy' => 'manual',
-			'showLabel' => true,
-		],
 	];
 	$contributions = [];
 	$alters = [];
+	$renderers = [];
 	$projectRoot = realpath(getenv('SMGEN_PROJECT_DIR') ?: getcwd()) ?: getcwd();
 
 	foreach($pluginPaths ?? (getConf('PLUGINS') ?: []) as $pluginPath)
@@ -840,6 +700,14 @@ function compileNavigationData($rootArgument, $pluginPaths = null)
 		{
 			$alterPath = navigationResolvePluginPath((string) $manifest['alter'], dirname($manifestPath), 'Plugin alter hook');
 			$alters[] = ['provider' => 'plugin ' . $pluginId, 'path' => $alterPath];
+		}
+		foreach(navigationPluginRenderers($manifest['renderers'] ?? [], dirname($manifestPath), 'plugin ' . $pluginId) as $rendererName => $rendererFile)
+		{
+			if(isset($renderers[$rendererName]))
+			{
+				throw new \RuntimeException('Menu renderer ' . $rendererName . ' from plugin ' . $pluginId . ' is already provided by ' . $renderers[$rendererName]['provider'] . '.');
+			}
+			$renderers[$rendererName] = ['file' => $rendererFile, 'provider' => 'plugin ' . $pluginId];
 		}
 	}
 	navigationMergeMenuDefinitions($definitions, $contributions, getConf('MENUS') ?: [], 'site configuration');
@@ -861,10 +729,6 @@ function compileNavigationData($rootArgument, $pluginPaths = null)
 			navigationPutPageLink($links, 'sidebar', $page, [
 				'weight' => 1000 + (float) ($page['metadata']['weight'] ?? 0),
 			], 'legacy sidebar');
-		}
-		if(array_key_exists('date', $page['metadata']) && ($page['metadata']['archive'] ?? true))
-		{
-			navigationPutPageLink($links, 'archive', $page, [], 'legacy archive');
 		}
 	}
 
@@ -954,10 +818,6 @@ function compileNavigationData($rootArgument, $pluginPaths = null)
 			{
 				$regions['sidebar'][] = 'sidebar';
 			}
-			elseif($widget === 'archive')
-			{
-				$regions['sidebar'][] = 'archive';
-			}
 			else
 			{
 				throw new \RuntimeException('Unknown navigation widget: ' . $widget);
@@ -989,14 +849,22 @@ function compileNavigationData($rootArgument, $pluginPaths = null)
 	unset($registry);
 
 	$compiledMenus = [];
-	$pendingCreated = [];
+	$pendingStamps = [];
+	$rendererContext = [
+		'projectDir' => $projectRoot,
+		'pagesRoot' => $rootPath,
+		/** Queue one source creation timestamp until every menu validates. */
+		'stampCreated' => function($absolutePath, $timestamp) use (&$pendingStamps) {
+			$pendingStamps[$absolutePath] = (int) $timestamp;
+		},
+	];
 	foreach($definitions as $name => $definition)
 	{
 		$name = navigationToken($name, 'menu name');
 		$renderer = (string) ($definition['renderer'] ?? 'flat');
-		if(!in_array($renderer, ['flat', 'tree', 'timeline'], true))
+		if(!in_array($renderer, ['flat', 'tree'], true) && !isset($renderers[$renderer]))
 		{
-			throw new \RuntimeException('Unknown renderer for menu ' . $name . ': ' . $renderer);
+			throw new \RuntimeException('Unknown renderer "' . $renderer . '" for menu ' . $name . '. Built-in renderers are flat and tree; install and activate the plugin that provides ' . $renderer . ' (for example smgen-' . $renderer . ').');
 		}
 		$hierarchy = (string) ($definition['hierarchy'] ?? 'manual');
 		if(!in_array($hierarchy, ['manual', 'source'], true))
@@ -1014,25 +882,14 @@ function compileNavigationData($rootArgument, $pluginPaths = null)
 			'renderer' => $renderer,
 			'showLabel' => (bool) ($definition['showLabel'] ?? false),
 		];
-		if($renderer === 'timeline')
+		if(isset($renderers[$renderer]))
 		{
-			$timelinePages = [];
-			foreach($links[$name] ?? [] as $link)
+			$provider = navigationLoadRenderer($renderers[$renderer]['file']);
+			$menu = $provider['compile']($menu, array_values($links[$name] ?? []), $catalogForAlter, $rendererContext);
+			if(!is_array($menu) || ($menu['name'] ?? null) !== $name || ($menu['renderer'] ?? null) !== $renderer)
 			{
-				if(($link['type'] ?? null) !== 'page' || !isset($pages[$link['source']]))
-				{
-					throw new \RuntimeException('Timeline menu ' . $name . ' may contain only content pages.');
-				}
-				$date = navigationResolveTimelineDate($pages[$link['source']], $pendingCreated);
-				$timelinePages[] = [
-					'id' => $link['id'],
-					'title' => (string) $link['title'],
-					'path' => $link['path'],
-					'date' => $date['date'],
-					'timestamp' => $date['timestamp'],
-				];
+				throw new \RuntimeException('Renderer ' . $renderer . ' must return the compiled menu ' . $name . '.');
 			}
-			$menu['timeline'] = buildArchiveNavigation($timelinePages);
 		}
 		else
 		{
@@ -1057,25 +914,114 @@ function compileNavigationData($rootArgument, $pluginPaths = null)
 	foreach(array_keys($activeMenus) as $menuName)
 	{
 		$menu = $compiledMenus[$menuName];
-		if($menu['renderer'] === 'timeline' && !empty($menu['timeline']['years']))
+		if(isset($renderers[$menu['renderer']]))
 		{
-			$assets[] = '/archive.css';
+			$provider = navigationLoadRenderer($renderers[$menu['renderer']]['file']);
+			foreach(navigationList($provider['assets']($menu), 'renderer assets for menu ' . $menuName) as $asset)
+			{
+				$asset = (string) $asset;
+				if($asset === '' || $asset[0] !== '/')
+				{
+					throw new \RuntimeException('Renderer assets must be root-relative public paths: ' . $asset);
+				}
+				$assets[] = $asset;
+			}
 		}
 	}
 
-	foreach($pendingCreated as $path => $timestamp)
+	foreach($pendingStamps as $path => $timestamp)
 	{
 		navigationWriteCreated($path, $timestamp);
 	}
 
+	$exportedRenderers = [];
+	foreach($renderers as $rendererName => $renderer)
+	{
+		$exportedRenderers[$rendererName] = ['file' => $renderer['file'], 'provider' => $renderer['provider']];
+	}
+
 	return [
-		'version' => 2,
+		'version' => 3,
 		'menus' => $compiledMenus,
 		'regions' => $regions,
+		'renderers' => $exportedRenderers,
 		'assets' => array_values(array_unique($assets)),
 		'tree' => $compiledMenus['sidebar']['items'] ?? [],
-		'archive' => $compiledMenus['archive']['timeline'] ?? ['years' => []],
 	];
+}
+
+/**
+ * Validate a manifest's renderer map and resolve each file inside the plugin.
+ *
+ * @param mixed $value Renderer mapping read from the manifest.
+ * @param string $basePath Absolute plugin directory.
+ * @param string $provider Provider label used in diagnostics.
+ * @return array<string, string> Renderer names mapped to canonical PHP files.
+ */
+function navigationPluginRenderers($value, $basePath, $provider)
+{
+	if($value === null || $value === [])
+	{
+		return [];
+	}
+	if(!is_array($value) || navigationArrayIsList($value))
+	{
+		throw new \RuntimeException('Renderers from ' . $provider . ' must be a mapping of renderer names to files.');
+	}
+	$renderers = [];
+	foreach($value as $name => $file)
+	{
+		$name = navigationToken($name, 'renderer name');
+		if(in_array($name, ['flat', 'tree'], true))
+		{
+			throw new \RuntimeException('Renderer ' . $name . ' from ' . $provider . ' collides with a built-in renderer.');
+		}
+		if(!is_string($file) || $file === '')
+		{
+			throw new \RuntimeException('Renderer ' . $name . ' from ' . $provider . ' must name a file.');
+		}
+		if(str_starts_with($file, '/') || preg_match('~^[A-Za-z]:[\\/]~', $file) || str_contains($file, "\0"))
+		{
+			throw new \RuntimeException('Renderer ' . $name . ' from ' . $provider . ' must be a path inside the plugin directory.');
+		}
+		$resolved = navigationResolvePluginPath($file, $basePath, 'Renderer ' . $name . ' from ' . $provider);
+		$root = realpath($basePath);
+		if($root === false || !str_starts_with($resolved, rtrim($root, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR))
+		{
+			throw new \RuntimeException('Renderer ' . $name . ' from ' . $provider . ' escapes the plugin directory: ' . $file);
+		}
+		$renderers[$name] = $resolved;
+	}
+	return $renderers;
+}
+
+/**
+ * Load a renderer file once and check that it returns compile, assets, and render callables.
+ *
+ * @param string $file Canonical renderer provider file.
+ * @return array{compile: callable, assets: callable, render: callable} Renderer callbacks.
+ */
+function navigationLoadRenderer($file)
+{
+	static $loaded = [];
+	if(isset($loaded[$file]))
+	{
+		return $loaded[$file];
+	}
+	$provider = require($file);
+	if(!is_array($provider))
+	{
+		throw new \RuntimeException('Menu renderer file must return an array of callables: ' . $file);
+	}
+	foreach(['compile', 'assets', 'render'] as $callable)
+	{
+		if(!isset($provider[$callable]) || !is_callable($provider[$callable]))
+		{
+			throw new \RuntimeException('Menu renderer file must provide a callable ' . $callable . ': ' . $file);
+		}
+	}
+	$loaded[$file] = $provider;
+	return $provider;
 }
 
 if(realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === __FILE__)

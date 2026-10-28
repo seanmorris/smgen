@@ -3,7 +3,7 @@ title: Navigation and Plugins
 weight: 4
 llms:
   section: guides
-  description: Define static menus, regions, plugins, and publication timelines.
+  description: Define static menus, regions, plugin renderers, and plugin contributions.
 ---
 
 # Navigation and Plugins
@@ -13,14 +13,16 @@ site configuration, and ordered plugins contribute links to named menus.
 Templates place those menus in named regions.
 
 The generated hierarchy and markup are static. A visitor does not need
-JavaScript to load or construct navigation.
+JavaScript to load or construct navigation. A group that
+contains the current page always renders open, whatever its configured
+`expanded` value or the visitor's remembered state.
 
 ## Define Menus and Regions
 
 <!-- <how keywords="second sidebar menu, navigation block, define tree menu, place menu in sidebar"> -->
 To add another sidebar menu, define it under `MENUS`, then list its name under
-`MENU_REGIONS.sidebar`. Choose the built-in `flat`, `tree`, or `timeline`
-renderer that matches the navigation you want.
+`MENU_REGIONS.sidebar`. Choose the built-in `flat` or `tree` renderer, or a
+renderer an active plugin provides, such as `timeline` from `smgen-timeline`.
 
 Put structured menu configuration in `.smgen.yaml` or an environment-specific
 YAML file:
@@ -39,18 +41,15 @@ MENUS:
     label: Documentation
     renderer: tree
     hierarchy: source
-  archive:
-    label: Archive
-    renderer: timeline
 MENU_REGIONS:
   header: [primary]
-  sidebar: [documentation, archive]
+  sidebar: [documentation]
 ```
 
 Each menu supports:
 
 - `label`: visible heading text when `showLabel` is true.
-- `renderer`: `flat`, `tree`, or `timeline`. Default: `flat`.
+- `renderer`: `flat`, `tree`, or a name a plugin registers. Default: `flat`.
 - `hierarchy`: `manual` or `source`. Default: `manual`.
 - `showLabel`: render the menu label. Default: `false`.
 - `links`: explicit page, external, or group links.
@@ -128,14 +127,14 @@ menus:
   documentation:
     parent: group:guides
     expanded: true
-  archive: true
+  releases: false
 ---
 ```
 
 A list provides membership without per-menu settings:
 
 ```yaml
-menus: [documentation, archive]
+menus: [documentation]
 ```
 
 Set a membership to `false` to remove that page from the menu. This also vetoes
@@ -146,7 +145,7 @@ menus:
   documentation: false
 ```
 
-When a page contains `menus`, SMGen does not infer legacy sidebar or archive
+When a page contains `menus`, SMGen does not infer legacy sidebar
 membership for that page. Pages without `menus` continue to use
 `leftBarLink`, `date`, and `archive` as described under
 [Legacy Navigation](#legacy-navigation).
@@ -180,41 +179,54 @@ visibility.
 `renderMenu()` and `renderMenuRegion()` throw an exception for an unknown name.
 Check optional regions with `menuRegionExists()` before rendering them.
 
-## Timeline Menus
+## Plugin Renderers
 
-<!-- <how keywords="blogger archive, timeline calendar, timeline javascript, timeline css, archive stylesheet, every page"> -->
-<!-- <what keywords="timeline behavior, calendar, expandable years and months, conditional assets"> -->
-<!-- <when keywords="timeline date, date fallback, creation time"> -->
-A timeline menu accepts content pages only. It renders:
+<!-- <how keywords="custom menu renderer, timeline plugin, renderer manifest field, renderer contract"> -->
+Core renders `flat` and `tree` menus. Any other `renderer` name must come from
+an active plugin. A manifest maps renderer names to PHP files inside the
+plugin:
 
-- a linked calendar for the active or newest month
-- expandable year and month groups
-- counts for years, months, and days with more than one entry
-- active page and date markers
+```yaml
+apiVersion: smgen/v1
+id: smgen-timeline
+renderers:
+  timeline: helpers/timeline.php
+```
 
-SMGen chooses a selected page's date in this order:
+The file returns three callables:
 
-1. author-supplied `date`
-2. author-supplied `created`
-3. filesystem birth time when the platform exposes it
-4. the page's first Git addition time
-5. filesystem modification time
+```php
+<?php
+return [
+    'compile' => static function(array $menu, array $links, array $catalog, array $context): array {
+        $menu['items'] = count($links);
+        return $menu;
+    },
+    'assets' => static fn(array $menu): array => ['/my-plugin/menu.css'],
+    'render' => static function(array $menu, string $idPath, array $context): void {
+        echo '<p>', $menu['items'], ' entries</p>';
+    },
+];
+```
 
-If both author fields are absent, SMGen writes the selected fallback to the
-source page as a full ISO 8601 `created` value. It writes the value once, after
-menu validation succeeds. Later builds reuse it. Git does not store filesystem
-creation or modification times, so the Git fallback uses commit history rather
-than file metadata.
+`compile` runs once per build with the menu definition, its resolved links
+(`id`, `type`, `source`, `path`, `title`), the page catalog (`pages` keyed by
+source path with `metadata`, `absolute`, `path`, and `title`, plus
+`directories`), and a context holding `projectDir`, `pagesRoot`, and a
+`stampCreated($absolutePath, $timestamp)` callback that writes a `created`
+value back to a source page after validation succeeds. It returns the menu,
+usually with extra keys. `assets` lists root-relative stylesheets to link when
+the menu is placed in a region; the plugin publishes them through `assets`.
+`render` runs inside each page's template process with the compiled menu, the
+region's id path, and a context array holding `currentPage` (the public path)
+and the `options` passed to `renderMenu()`. Renderer files must live inside the
+plugin directory, and a plugin that declares renderers compiles navigation in
+an isolated process like one with an `alter` hook.
 
-`modified` is optional and never generated. It overrides the source file
-modification time used for that page's sitemap `lastmod` value.
-
-Timeline markup uses native `details` elements. SMGen adds no timeline-specific
-JavaScript. It copies and links `archive.css` only when a populated timeline is
-assigned to a region. A timeline that is empty or never placed in a region adds
-no stylesheet request.
-<!-- </when> -->
-<!-- </what> -->
+A build that names a renderer no plugin provides fails with a message naming
+the renderer. The date-based timeline that earlier SMGen versions built in now
+ships as the `smgen-timeline` plugin, which depends on `smgen-categories` for
+day rollup pages.
 <!-- </how> -->
 
 ## Menu Plugins
@@ -299,29 +311,25 @@ The callback receives:
 - `$context`: the provider name and absolute project directory.
 
 An alter callback runs before hierarchy validation and rendering. Invalid menu
-names, link fields, renderers, regions, parent references, or timeline entries
-fail the build and preserve the last successful output.
+names, link fields, renderers, regions, parent references, or renderer
+results fail the build and preserve the last successful output.
 
 ## Legacy Navigation
 
 <!-- <what keywords="legacy inference, menus field, leftbarlink behavior, gradual migration"> -->
 <!-- <how keywords="migrate old sidebar, keep rendernavbar, named menu migration"> -->
-SMGen always defines the built-in `sidebar` tree menu and `archive` timeline
-menu. If `MENU_REGIONS.sidebar` is absent, `NAVIGATION_WIDGETS` maps `tree` to
-`sidebar` and `archive` to `archive`.
+SMGen always defines the built-in `sidebar` tree menu. If `MENU_REGIONS.sidebar`
+is absent, `NAVIGATION_WIDGETS` maps `tree` to `sidebar`.
 
 Pages without a `menus` field use the original rules:
 
 - `leftBarLink: false` removes the page from the sidebar tree.
 - `leftBarShow: false` hides the sidebar on that page.
-- a page with `date` joins the archive unless `archive: false` is set.
-- `ARCHIVE_TITLE` supplies the archive heading.
 
 Pages with a `menus` field use explicit named menu membership instead of these
-legacy rules.
+legacy rules. Dated archives come from the `smgen-timeline` plugin, which
+selects pages by their `date` and honours `archive: false`.
 
 Existing project helpers that define their own `renderNavBar()` remain usable.
-The core named-menu functions load alongside that override, so a project can
-migrate templates and menus incrementally.
 <!-- </how> -->
 <!-- </what> -->

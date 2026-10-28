@@ -13,12 +13,15 @@ DEFAULT_THEME: theme-cosmic
 STATIC_DIR: ./static
 
 STYLES:
+  - /scrollbar.css
   - /default.css
   - /cosmic.css
 
+SCRIPTS:
+  - /nav-state.js
+
 DEFER_SCRIPTS:
   - /main.js
-  - /nav-state.js
   - /search.js
   - /theme-variant.js
 

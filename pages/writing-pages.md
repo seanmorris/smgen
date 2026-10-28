@@ -54,9 +54,7 @@ noSearch: false
 leftBarLink: true
 leftBarShow: true
 date: 2026-10-21
-created: 2026-10-20T15:30:00Z
 modified: 2026-10-22T09:00:00Z
-archive: true
 feeds: [main, releases]
 menus:
   documentation: true
@@ -76,10 +74,12 @@ SMGen-specific page fields include:
 - `noSearch`: exclude the page from a generated `smgen-search` index.
 - `leftBarLink`: include the page in legacy sidebar inference. Default: `true`.
 - `leftBarShow`: render the sidebar on this page. Default: `true`.
-- `date`: preferred publication date for a timeline menu.
-- `created`: creation date used when `date` is absent.
+- `date`: publication date used by feeds, `lastmod` fallbacks, and the
+  `smgen-timeline` plugin.
+- `created`: creation date a plugin may write back when `date` is absent.
 - `modified`: optional override for sitemap `lastmod`.
-- `archive`: include a dated page in the legacy archive. Default: `true`.
+- `archive`: set to `false` to keep a dated page out of a timeline plugin's
+  menu. Default: `true`.
 - `feeds`: named RSS feed memberships as a list or boolean mapping.
 - `rss`: custom RSS item elements for pages selected into a feed.
 - `menus`: named menu memberships and per-menu link settings.
@@ -160,7 +160,7 @@ Add the renderer call to that template before using `jsonld`.
 Use a list when a page needs membership without custom link settings:
 
 ```yaml
-menus: [documentation, archive]
+menus: [documentation]
 ```
 
 Use a mapping to configure individual links:
@@ -174,12 +174,11 @@ menus:
     parent: group:getting-started
     expanded: true
     description: Read the installation guide
-  archive: true
 ```
 
 Per-menu fields are `title`, `parent`, `weight`, `expanded`, `variant`, `icon`,
 and `description`. Set a membership to `false` to remove a page selected by a
-plugin. When `menus` exists, SMGen does not infer legacy sidebar or archive
+plugin. When `menus` exists, SMGen does not infer legacy sidebar
 membership for that page.
 
 See [Navigation and Plugins](navigation.html) for menu definitions, link IDs,
@@ -187,17 +186,9 @@ regions, plugins, and renderers.
 
 ## Publication and Sitemap Dates
 
-A timeline menu uses `date`, then `created`. When a selected page has neither,
-SMGen derives a creation time and writes it to the page as `created`. The build
-checks filesystem birth time, first Git addition time, and filesystem
-modification time in that order.
-
-SMGen never generates `modified`. When present, it supplies the sitemap
-`lastmod` date. When absent, the sitemap uses the source file's modification
-time.
-
-Legacy archive membership requires `date`. A page selected explicitly into a
-named timeline may use `created` or the generated fallback instead.
+Dated archives come from the `smgen-timeline` plugin. It uses `date`, then
+`created`, and when a selected page has neither it derives a creation time and
+writes it back to the page as `created`, so later builds agree.
 
 RSS feeds also use `date`, then `created`. An RSS selection never derives or
 writes a timestamp. A selected page without either field fails the build.

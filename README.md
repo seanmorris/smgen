@@ -14,7 +14,7 @@ SMGen supports:
 - JSON-LD structured data from page frontmatter
 - PHP and Pandoc templates
 - reusable PHP template providers and isolated legacy templates
-- named menus with flat, tree, and timeline renderers
+- named menus with flat and tree renderers, plus renderers that plugins register
 - versioned plugins with page selection, assets, filters, and build hooks
 - ordered menu contributions and alter hooks
 - named RSS 2.0 feeds with YAML channel and item data
@@ -163,8 +163,8 @@ bash ./tests/run.sh
 
 The regression suite covers configuration precedence, frontmatter, templates,
 output rollback, hooks, path safety, static assets, search, sitemap output,
-`llms.txt`, RSS output, legacy navigation, named menus, plugins, and timeline
-dates.
+`llms.txt`, RSS output, legacy navigation, named menus, plugins, and plugin
+renderers.
 
 ### Publish a Release
 

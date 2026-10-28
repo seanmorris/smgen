@@ -20,6 +20,26 @@ function navigationLinkClasses($entry, $active)
 	return $classes ? ' class="' . escapeHtml(implode(' ', $classes)) . '"' : '';
 }
 
+/**
+ * Report whether a navigation entry or one of its descendants targets the current page.
+ *
+ * @param array<string, mixed> $entry Compiled navigation entry.
+ */
+function navigationContainsCurrent($entry)
+{
+	$href = navigationEntryHref($entry);
+	$contains = $href !== null && getenv('CURRENT_PAGE') === $href;
+	foreach($entry['children'] ?? [] as $child)
+	{
+		if($contains)
+		{
+			break;
+		}
+		$contains = navigationContainsCurrent($child);
+	}
+	return $contains;
+}
+
 function renderNavigationLink($entry)
 {
 	$href = navigationEntryHref($entry);
@@ -47,8 +67,9 @@ function renderNavigationEntries($entries, $idPath = '')
 		$isGroup = in_array(($entry['type'] ?? ''), ['directory', 'group'], true);
 		if($isGroup)
 		{
-			$expanded = $entry['expanded'] ?? $entry['open'] ?? true;
-			?><details <?=$expanded ? 'open' : '';?> data-id-path="<?=escapeHtml($entry['id'] ?? $idSubPath);?>">
+			$containsCurrent = navigationContainsCurrent($entry);
+			$expanded = $containsCurrent || ($entry['expanded'] ?? $entry['open'] ?? true);
+			?><details <?=$expanded ? 'open' : '';?> data-id-path="<?=escapeHtml($entry['id'] ?? $idSubPath);?>"<?=$containsCurrent ? ' data-contains-current="true"' : '';?>>
 				<summary><?php renderNavigationLink($entry); ?></summary>
 				<?php renderNavigationEntries($entry['children'] ?? [], $idSubPath); ?>
 			</details><?php
@@ -71,180 +92,6 @@ function renderFlatNavigationEntries($entries)
 	<?php endforeach; ?></ul><?php
 }
 
-function archiveMonths($archive)
-{
-	$months = [];
-	foreach($archive['years'] ?? [] as $year)
-	{
-		foreach($year['months'] ?? [] as $month)
-		{
-			$months[] = $month;
-		}
-	}
-	return $months;
-}
-
-function archiveMonthContainsPath($month, $path)
-{
-	foreach($month['pages'] ?? [] as $page)
-	{
-		if(($page['path'] ?? '') === $path)
-		{
-			return true;
-		}
-	}
-	return false;
-}
-
-function archiveYearContainsPath($year, $path)
-{
-	foreach($year['months'] ?? [] as $month)
-	{
-		if(archiveMonthContainsPath($month, $path))
-		{
-			return true;
-		}
-	}
-	return false;
-}
-
-function renderArchiveCalendar($months, $currentPath)
-{
-	if(!$months)
-	{
-		return;
-	}
-
-	$activeIndex = 0;
-	foreach($months as $index => $month)
-	{
-		if(archiveMonthContainsPath($month, $currentPath))
-		{
-			$activeIndex = $index;
-			break;
-		}
-	}
-
-	$month = $months[$activeIndex];
-	$monthDate = \DateTimeImmutable::createFromFormat('!Y-m-d', $month['month'] . '-01');
-	$daysInMonth = (int) $monthDate->format('t');
-	$startOffset = (int) $monthDate->format('w');
-	$weeks = (int) ceil(($startOffset + $daysInMonth) / 7);
-	$pagesByDay = [];
-	foreach($month['pages'] ?? [] as $page)
-	{
-		$day = (int) substr($page['date'], 8, 2);
-		$pagesByDay[$day][] = $page;
-	}
-
-	$older = $months[$activeIndex + 1] ?? null;
-	$newer = $months[$activeIndex - 1] ?? null;
-	$weekdays = [
-		['Sunday', 'Su'],
-		['Monday', 'Mo'],
-		['Tuesday', 'Tu'],
-		['Wednesday', 'We'],
-		['Thursday', 'Th'],
-		['Friday', 'Fr'],
-		['Saturday', 'Sa'],
-	];
-
-	?><div class="archive-calendar">
-		<div class="archive-calendar-heading">
-			<?php if($older): ?>
-			<a href="<?=escapeHtml(resolveAssetUrl($older['pages'][0]['path']));?>" aria-label="Previous month: <?=escapeHtml($older['name'] . ' ' . substr($older['month'], 0, 4));?>" rel="prev">&#8249;</a>
-			<?php else: ?>
-			<span aria-hidden="true"></span>
-			<?php endif; ?>
-			<strong><?=escapeHtml($month['name'] . ' ' . substr($month['month'], 0, 4));?></strong>
-			<?php if($newer): ?>
-			<a href="<?=escapeHtml(resolveAssetUrl($newer['pages'][0]['path']));?>" aria-label="Next month: <?=escapeHtml($newer['name'] . ' ' . substr($newer['month'], 0, 4));?>" rel="next">&#8250;</a>
-			<?php else: ?>
-			<span aria-hidden="true"></span>
-			<?php endif; ?>
-		</div>
-		<table>
-			<caption class="visually-hidden"><?=escapeHtml($month['name'] . ' ' . substr($month['month'], 0, 4));?> publication calendar</caption>
-			<thead><tr><?php foreach($weekdays as [$name, $short]): ?><th scope="col"><abbr title="<?=escapeHtml($name);?>"><?=escapeHtml($short);?></abbr></th><?php endforeach; ?></tr></thead>
-			<tbody><?php
-			for($week = 0; $week < $weeks; $week++)
-			{
-				?><tr><?php
-				for($weekday = 0; $weekday < 7; $weekday++)
-				{
-					$day = ($week * 7) + $weekday - $startOffset + 1;
-					if($day < 1 || $day > $daysInMonth)
-					{
-						?><td aria-hidden="true"></td><?php
-						continue;
-					}
-
-					$dayPages = $pagesByDay[$day] ?? [];
-					if(!$dayPages)
-					{
-						?><td><span><?=escapeHtml($day);?></span></td><?php
-						continue;
-					}
-
-					$count = count($dayPages);
-					$label = $monthDate->setDate((int) $monthDate->format('Y'), (int) $monthDate->format('m'), $day)->format('F j, Y');
-					$label .= ': ' . $count . ($count === 1 ? ' post' : ' posts');
-					$isCurrent = false;
-					foreach($dayPages as $page)
-					{
-						$isCurrent = $isCurrent || ($page['path'] ?? '') === $currentPath;
-					}
-					?><td class="has-posts"><a href="<?=escapeHtml(resolveAssetUrl($dayPages[0]['path']));?>" aria-label="<?=escapeHtml($label);?>" <?=$isCurrent ? 'aria-current="date"' : '';?>><?=escapeHtml($day);?><?php if($count > 1): ?><span class="archive-day-count" aria-hidden="true"><?=escapeHtml($count);?></span><?php endif; ?></a></td><?php
-				}
-				?></tr><?php
-			}
-			?></tbody>
-		</table>
-	</div><?php
-}
-
-function renderArchiveNavigation($archive, $idPath = '', $title = null)
-{
-	$years = $archive['years'] ?? [];
-	if(!$years)
-	{
-		return;
-	}
-
-	$currentPath = getenv('CURRENT_PAGE') ?: '';
-	$hasCurrentPage = false;
-	foreach($years as $year)
-	{
-		$hasCurrentPage = $hasCurrentPage || archiveYearContainsPath($year, $currentPath);
-	}
-	$prefix = $idPath === '' ? 'archive' : $idPath . '-archive';
-	$title = $title ?? getConf('ARCHIVE_TITLE') ?: 'Archive';
-
-	?><section class="navigation-widget archive-widget" aria-label="<?=escapeHtml($title);?>">
-		<h2 class="navigation-widget-title"><?=escapeHtml($title);?></h2>
-		<?php renderArchiveCalendar(archiveMonths($archive), $currentPath); ?>
-		<ul class="archive-timeline"><?php foreach($years as $yearIndex => $year):
-			$yearCurrent = archiveYearContainsPath($year, $currentPath);
-			$yearOpen = $yearCurrent || (!$hasCurrentPage && $yearIndex === 0);
-			$yearId = $prefix . '-' . $year['year'];
-			?><li><details <?=$yearOpen ? 'open' : '';?> data-id-path="<?=escapeHtml($yearId);?>">
-				<summary><span><?=escapeHtml($year['year']);?></span> <span class="archive-count">(<?=escapeHtml($year['count']);?>)</span></summary>
-				<ul><?php foreach($year['months'] ?? [] as $monthIndex => $month):
-					$monthCurrent = archiveMonthContainsPath($month, $currentPath);
-					$monthOpen = $monthCurrent || (!$hasCurrentPage && $yearIndex === 0 && $monthIndex === 0);
-					$monthId = $yearId . '-' . substr($month['month'], 5, 2);
-					?><li><details <?=$monthOpen ? 'open' : '';?> data-id-path="<?=escapeHtml($monthId);?>">
-						<summary><span><?=escapeHtml($month['name']);?></span> <span class="archive-count">(<?=escapeHtml($month['count']);?>)</span></summary>
-						<ul><?php foreach($month['pages'] ?? [] as $page): ?>
-							<li><a href="<?=escapeHtml(resolveAssetUrl($page['path']));?>" <?=($page['path'] ?? '') === $currentPath ? 'class="active-link" aria-current="page"' : '';?>><time datetime="<?=escapeHtml($page['date']);?>"><?=escapeHtml((int) substr($page['date'], 8, 2));?></time><span><?=escapeHtml($page['title']);?></span></a></li>
-						<?php endforeach; ?></ul>
-					</details></li>
-				<?php endforeach; ?></ul>
-			</details></li>
-		<?php endforeach; ?></ul>
-	</section><?php
-}
-
 function loadNavigationData()
 {
 	static $data;
@@ -263,7 +110,7 @@ function loadNavigationData()
 	// Keep project-generated data from older SMGen versions usable.
 	if($data === [] || array_keys($data) === range(0, count($data) - 1))
 	{
-		$data = ['tree' => $data, 'archive' => ['years' => []]];
+		$data = ['tree' => $data];
 	}
 	if(!isset($data['menus']))
 	{
@@ -275,21 +122,45 @@ function loadNavigationData()
 				'showLabel' => false,
 				'items' => $data['tree'] ?? [],
 			],
-			'archive' => [
-				'name' => 'archive',
-				'label' => getConf('ARCHIVE_TITLE') ?: 'Archive',
-				'renderer' => 'timeline',
-				'showLabel' => true,
-				'timeline' => $data['archive'] ?? ['years' => []],
-			],
 		];
-		$data['regions']['sidebar'] = [];
-		foreach(getConf('NAVIGATION_WIDGETS') ?: ['tree'] as $widget)
-		{
-			$data['regions']['sidebar'][] = $widget === 'tree' ? 'sidebar' : $widget;
-		}
+		$data['regions']['sidebar'] = ['sidebar'];
 	}
 	return $data;
+}
+
+/**
+ * Load and validate the provider for one plugin-defined menu renderer.
+ *
+ * @param string $rendererName Renderer token stored in compiled navigation data.
+ * @return array{compile: callable, assets: callable, render: callable} Renderer callbacks.
+ */
+function navigationRendererProvider($rendererName)
+{
+	static $providers = [];
+	if(isset($providers[$rendererName]))
+	{
+		return $providers[$rendererName];
+	}
+	$data = loadNavigationData();
+	$file = $data['renderers'][$rendererName]['file'] ?? null;
+	if(!is_string($file) || !is_file($file))
+	{
+		throw new \RuntimeException('Menu renderer ' . $rendererName . ' is not available to this template.');
+	}
+	$provider = require($file);
+	if(!is_array($provider))
+	{
+		throw new \RuntimeException('Menu renderer file must return an array of callables: ' . $file);
+	}
+	foreach(['compile', 'assets', 'render'] as $callable)
+	{
+		if(!isset($provider[$callable]) || !is_callable($provider[$callable]))
+		{
+			throw new \RuntimeException('Menu renderer file must provide a callable ' . $callable . ': ' . $file);
+		}
+	}
+	$providers[$rendererName] = $provider;
+	return $provider;
 }
 
 function renderMenu($menuName, $options = [])
@@ -302,9 +173,10 @@ function renderMenu($menuName, $options = [])
 	$menu = $data['menus'][$menuName];
 	$renderer = $menu['renderer'] ?? 'flat';
 	$idPath = (string) ($options['idPath'] ?? $menuName);
-	if($renderer === 'timeline')
+	if(!in_array($renderer, ['flat', 'tree'], true))
 	{
-		renderArchiveNavigation($menu['timeline'] ?? ['years' => []], $idPath, $menu['label'] ?? $menuName);
+		$provider = navigationRendererProvider($renderer);
+		$provider['render']($menu, $idPath, ['currentPage' => getenv('CURRENT_PAGE') ?: '', 'options' => $options]);
 		return;
 	}
 
